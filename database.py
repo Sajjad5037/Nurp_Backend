@@ -1,25 +1,43 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
+from dotenv import load_dotenv
 import os
 
-# ------------------------------------------------------------------
-# Database URL
-#
-# Local Example:
-# postgresql://postgres:password@localhost:5432/flowpilot
-#
-# Railway Example:
-# DATABASE_URL will automatically be available as an environment variable.
-# ------------------------------------------------------------------
+# ---------------------------------------------------
+# Load .env
+# ---------------------------------------------------
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:password@localhost:5432/flowpilot"
+load_dotenv()
+
+# ---------------------------------------------------
+# Database URL
+# ---------------------------------------------------
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL is None:
+
+    raise RuntimeError(
+
+        "DATABASE_URL not found in environment variables."
+
+    )
+
+# Railway sometimes uses postgres:// instead of postgresql://
+
+DATABASE_URL = DATABASE_URL.replace(
+
+    "postgres://",
+
+    "postgresql://",
+
+    1
+
 )
 
-# ------------------------------------------------------------------
-# SQLAlchemy Engine
-# ------------------------------------------------------------------
+# ---------------------------------------------------
+# Engine
+# ---------------------------------------------------
 
 engine = create_engine(
 
@@ -29,9 +47,9 @@ engine = create_engine(
 
 )
 
-# ------------------------------------------------------------------
-# Session Factory
-# ------------------------------------------------------------------
+# ---------------------------------------------------
+# Session
+# ---------------------------------------------------
 
 SessionLocal = sessionmaker(
 
@@ -43,15 +61,15 @@ SessionLocal = sessionmaker(
 
 )
 
-# ------------------------------------------------------------------
-# Base Model
-# ------------------------------------------------------------------
+# ---------------------------------------------------
+# Base
+# ---------------------------------------------------
 
 Base = declarative_base()
 
-# ------------------------------------------------------------------
+# ---------------------------------------------------
 # Dependency
-# ------------------------------------------------------------------
+# ---------------------------------------------------
 
 def get_db():
 
