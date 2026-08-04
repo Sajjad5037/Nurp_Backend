@@ -28,6 +28,9 @@ def create_template(
     db: Session = Depends(get_db)
 ):
 
+    print("========== CREATE TEMPLATE ==========")
+    print("Name:", template.name)
+
     new_template = EvaluationTemplate(
 
         name=template.name,
@@ -40,9 +43,15 @@ def create_template(
 
     db.add(new_template)
 
+    print("Added to session")
+
     db.commit()
 
+    print("Committed")
+
     db.refresh(new_template)
+
+    print("New ID:", new_template.id)
 
     return new_template
 

@@ -47,3 +47,8 @@ class EvaluationTemplate(Base):
         nullable=False,
         default="draft"
     )
+    version = Column(
+        Integer,
+        nullable=False,
+        default=1
+    )

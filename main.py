@@ -3,10 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import Base, engine
 from routers.evaluation_templates import router as evaluation_template_router
+from routers.employees import router as employee_router
 
 # Import the model so SQLAlchemy knows about it
 from models.evaluation_template import EvaluationTemplate
+from models.employee import Employee
+from routers.evaluation_assignment import (
+    router as evaluation_assignment_router
+)
 
+from models.evaluation_assignment import EvaluationAssignment
 app = FastAPI(
     title="FlowPilot Backend",
     version="1.0.0",
@@ -36,7 +42,8 @@ app.add_middleware(
 # -------------------------------------------------------------
 
 app.include_router(evaluation_template_router)
-
+app.include_router(employee_router)
+app.include_router(evaluation_assignment_router)
 # -------------------------------------------------------------
 # Root
 # -------------------------------------------------------------

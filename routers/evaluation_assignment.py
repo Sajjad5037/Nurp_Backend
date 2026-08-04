@@ -1,0 +1,411 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from database import get_db
+from datetime import datetime, timezone
+
+from models.employee import Employee
+from models.evaluation_template import EvaluationTemplate
+from models.evaluation_assignment import EvaluationAssignment
+import uuid
+
+from utils.email_service import (
+    send_employee_evaluation_email,
+    send_supervisor_evaluation_email,
+    send_hr_evaluation_email
+)
+from schemas.evaluation_assignment import (
+    EvaluationAssignmentCreate,
+    EvaluationAssignmentResponse,
+    EvaluationSubmission
+)
+
+router = APIRouter(
+    prefix="/evaluation-assignments",
+    tags=["Evaluation Assignments"]
+)
+
+
+# --------------------------------------------------
+# Create Evaluation Assignment
+# --------------------------------------------------
+
+@router.post(
+    "",
+    response_model=EvaluationAssignmentResponse
+)
+def create_assignment(
+    assignment: EvaluationAssignmentCreate,
+    db: Session = Depends(get_db)
+):
+
+    # -----------------------------------------------
+    # Validate Employee
+    # -----------------------------------------------
+
+    employee = (
+        db.query(Employee)
+        .filter(Employee.id == assignment.employee_id)
+        .first()
+    )
+
+    if not employee:
+        raise HTTPException(
+            status_code=404,
+            detail="Employee not found."
+        )
+
+    # -----------------------------------------------
+    # Validate Supervisor
+    # -----------------------------------------------
+
+    supervisor = (
+        db.query(Employee)
+        .filter(Employee.id == assignment.supervisor_id)
+        .first()
+    )
+
+    if not supervisor:
+        raise HTTPException(
+            status_code=404,
+            detail="Supervisor not found."
+        )
+
+    # -----------------------------------------------
+    # Validate HR
+    # -----------------------------------------------
+
+    hr = (
+        db.query(Employee)
+        .filter(Employee.id == assignment.hr_id)
+        .first()
+    )
+
+    if not hr:
+        raise HTTPException(
+            status_code=404,
+            detail="HR employee not found."
+        )
+
+    # -----------------------------------------------
+    # Load Template
+    # -----------------------------------------------
+
+    template = (
+        db.query(EvaluationTemplate)
+        .filter(EvaluationTemplate.id == assignment.template_id)
+        .first()
+    )
+
+    if not template:
+        raise HTTPException(
+            status_code=404,
+            detail="Evaluation template not found."
+        )
+
+    # -----------------------------------------------
+    # Create Assignment
+    # -----------------------------------------------
+
+    access_token = str(uuid.uuid4())
+
+    db_assignment = EvaluationAssignment(
+
+        template_id=assignment.template_id,
+
+        employee_id=assignment.employee_id,
+
+        supervisor_id=assignment.supervisor_id,
+
+        hr_id=assignment.hr_id,
+
+        workflow_json=template.workflow_json,
+
+        access_token=access_token,
+
+        current_stage="employee",
+
+        status="waiting_for_employee"
+
+    )
+
+    db.add(db_assignment)
+
+    db.commit()
+
+    db.refresh(db_assignment)
+    send_employee_evaluation_email(
+
+        employee_name=employee.full_name,
+
+        employee_email=employee.email,
+
+        access_token=access_token
+
+    )
+
+    return db_assignment
+
+
+# --------------------------------------------------
+# Get All Assignments
+# --------------------------------------------------
+
+@router.get(
+    "",
+    response_model=list[EvaluationAssignmentResponse]
+)
+def get_assignments(
+    db: Session = Depends(get_db)
+):
+
+    return (
+        db.query(EvaluationAssignment)
+        .order_by(EvaluationAssignment.created_at.desc())
+        .all()
+    )
+
+# --------------------------------------------------
+# Get Assignment By Access Token
+# --------------------------------------------------
+
+@router.get("/token/{access_token}")
+def get_assignment_by_token(
+    access_token: str,
+    db: Session = Depends(get_db)
+):
+
+    assignment = (
+        db.query(EvaluationAssignment)
+        .filter(
+            EvaluationAssignment.access_token == access_token
+        )
+        .first()
+    )
+
+    if not assignment:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Invalid or expired evaluation link."
+        )
+
+    employee = (
+        db.query(Employee)
+        .filter(Employee.id == assignment.employee_id)
+        .first()
+    )
+
+    if not employee:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Employee not found."
+        )
+
+    return {
+
+        "id": assignment.id,
+
+        "employee_name": employee.full_name,
+
+        "employee_email": employee.email,
+
+        "current_stage": assignment.current_stage,
+
+        "status": assignment.status,
+
+        "workflow_json": assignment.workflow_json,
+
+        "employee_responses": assignment.employee_responses,
+
+        "supervisor_responses": assignment.supervisor_responses,
+
+        "hr_responses": assignment.hr_responses
+
+    }
+
+# --------------------------------------------------
+# Employee Submit Evaluation
+# --------------------------------------------------
+
+@router.post("/{assignment_id}/submit")
+def submit_evaluation(
+
+    assignment_id: int,
+
+    submission: EvaluationSubmission,
+
+    db: Session = Depends(get_db)
+
+):
+
+    assignment = (
+
+        db.query(EvaluationAssignment)
+
+        .filter(EvaluationAssignment.id == assignment_id)
+
+        .first()
+
+    )
+
+    if not assignment:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Evaluation assignment not found."
+
+        )
+
+    # ------------------------------------------
+    # Employee Submission
+    # ------------------------------------------
+
+    if assignment.current_stage == "employee":
+
+        assignment.employee_responses = submission.responses
+
+        assignment.employee_completed_at = datetime.now(
+            timezone.utc
+        )
+
+        assignment.current_stage = "supervisor"
+
+        assignment.status = "waiting_for_supervisor"
+
+        db.commit()
+
+        db.refresh(assignment)
+
+        employee = (
+
+            db.query(Employee)
+
+            .filter(Employee.id == assignment.employee_id)
+
+            .first()
+
+        )
+
+        supervisor = (
+
+            db.query(Employee)
+
+            .filter(Employee.id == assignment.supervisor_id)
+
+            .first()
+
+        )
+
+        send_supervisor_evaluation_email(
+
+            supervisor_name=supervisor.full_name,
+
+            supervisor_email=supervisor.email,
+
+            employee_name=employee.full_name,
+
+            access_token=assignment.access_token
+
+        )
+
+    # ------------------------------------------
+    # Supervisor Submission
+    # ------------------------------------------
+
+    elif assignment.current_stage == "supervisor":
+
+        assignment.supervisor_responses = submission.responses
+
+        assignment.supervisor_completed_at = datetime.now(
+            timezone.utc
+        )
+
+        assignment.current_stage = "hr"
+
+        assignment.status = "waiting_for_hr"
+
+        db.commit()
+
+        db.refresh(assignment)
+
+        employee = (
+
+            db.query(Employee)
+
+            .filter(Employee.id == assignment.employee_id)
+
+            .first()
+
+        )
+
+        hr = (
+
+            db.query(Employee)
+
+            .filter(Employee.id == assignment.hr_id)
+
+            .first()
+
+        )
+
+        send_hr_evaluation_email(
+
+            hr_name=hr.full_name,
+
+            hr_email=hr.email,
+
+            employee_name=employee.full_name,
+
+            access_token=assignment.access_token
+
+        )
+
+    else:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail="Evaluation is already completed or in an invalid stage."
+
+        )
+
+    return {
+
+        "message": "Evaluation submitted successfully.",
+
+        "current_stage": assignment.current_stage,
+
+        "status": assignment.status
+
+    }# --------------------------------------------------
+# Get Assignment
+# --------------------------------------------------
+
+@router.get(
+    "/{assignment_id}",
+    response_model=EvaluationAssignmentResponse
+)
+def get_assignment(
+    assignment_id: int,
+    db: Session = Depends(get_db)
+):
+
+    assignment = (
+        db.query(EvaluationAssignment)
+        .filter(EvaluationAssignment.id == assignment_id)
+        .first()
+    )
+
+    if not assignment:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Assignment not found."
+        )
+
+    return assignment

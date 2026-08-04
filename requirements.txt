@@ -1,6 +1,7 @@
-fastapi==0.116.1
-uvicorn==0.35.0
-sqlalchemy==2.0.43
-psycopg2-binary==2.9.10
-python-dotenv==1.1.1
-pydantic==2.11.7
+cffi==2.1.0
+cryptography==50.0.0
+MarkupSafe==3.0.3
+pycparser==3.0
+python-http-client==3.3.7
+sendgrid==6.12.5
+Werkzeug==3.1.8
