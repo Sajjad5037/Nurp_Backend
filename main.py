@@ -4,13 +4,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import Base, engine
 from routers.evaluation_templates import router as evaluation_template_router
 from routers.employees import router as employee_router
+from routers.evaluation_master_sheet import router as evaluation_master_sheet_router
+from routers.evaluation_assignment import (
+    router as evaluation_assignment_router
+)
+from routers.meeting_readiness import router as meeting_readiness_router
 
 # Import the model so SQLAlchemy knows about it
 from models.evaluation_template import EvaluationTemplate
 from models.employee import Employee
-from routers.evaluation_assignment import (
-    router as evaluation_assignment_router
-)
+
 
 from models.evaluation_assignment import EvaluationAssignment
 app = FastAPI(
@@ -44,6 +47,8 @@ app.add_middleware(
 app.include_router(evaluation_template_router)
 app.include_router(employee_router)
 app.include_router(evaluation_assignment_router)
+app.include_router(evaluation_master_sheet_router)
+app.include_router(meeting_readiness_router)
 # -------------------------------------------------------------
 # Root
 # -------------------------------------------------------------

@@ -203,6 +203,20 @@ def get_assignment_by_token(
             detail="Employee not found."
         )
 
+    print("======================================")
+    print("Evaluation Assignment:", assignment.id)
+    print("Current Stage:", assignment.current_stage)
+    print("--------------------------------------")
+    print("Employee Responses:")
+    print(assignment.employee_responses)
+    print("--------------------------------------")
+    print("Supervisor Responses:")
+    print(assignment.supervisor_responses)
+    print("--------------------------------------")
+    print("HR Responses:")
+    print(assignment.hr_responses)
+    print("======================================")
+
     return {
 
         "id": assignment.id,
@@ -224,7 +238,6 @@ def get_assignment_by_token(
         "hr_responses": assignment.hr_responses
 
     }
-
 # --------------------------------------------------
 # Employee Submit Evaluation
 # --------------------------------------------------
@@ -318,7 +331,16 @@ def submit_evaluation(
 
     elif assignment.current_stage == "supervisor":
 
+        print("====================================")
+        print("SUPERVISOR SUBMISSION RECEIVED")
+        print("submission.responses:")
+        print(submission.responses)
+
         assignment.supervisor_responses = submission.responses
+
+        print("------------------------------------")
+        print("assignment.supervisor_responses BEFORE COMMIT:")
+        print(assignment.supervisor_responses)
 
         assignment.supervisor_completed_at = datetime.now(
             timezone.utc
@@ -332,24 +354,21 @@ def submit_evaluation(
 
         db.refresh(assignment)
 
+        print("------------------------------------")
+        print("assignment.supervisor_responses AFTER COMMIT:")
+        print(assignment.supervisor_responses)
+        print("====================================")
+
         employee = (
-
             db.query(Employee)
-
             .filter(Employee.id == assignment.employee_id)
-
             .first()
-
         )
 
         hr = (
-
             db.query(Employee)
-
             .filter(Employee.id == assignment.hr_id)
-
             .first()
-
         )
 
         send_hr_evaluation_email(
@@ -363,7 +382,21 @@ def submit_evaluation(
             access_token=assignment.access_token
 
         )
+    elif assignment.current_stage == "hr":
 
+        assignment.hr_responses = submission.responses
+
+        assignment.hr_completed_at = datetime.now(
+            timezone.utc
+        )
+
+        assignment.current_stage = "completed"
+
+        assignment.status = "completed"
+
+        db.commit()
+
+        db.refresh(assignment)
     else:
 
         raise HTTPException(
@@ -382,7 +415,8 @@ def submit_evaluation(
 
         "status": assignment.status
 
-    }# --------------------------------------------------
+    }
+# --------------------------------------------------
 # Get Assignment
 # --------------------------------------------------
 
