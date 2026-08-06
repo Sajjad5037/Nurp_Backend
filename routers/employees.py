@@ -45,6 +45,7 @@ def create_employee(
         email=employee.email,
         slack_id=employee.slack_id,
         department=employee.department,
+        designation=employee.designation,
         role=employee.role
     )
 
@@ -132,6 +133,7 @@ def update_employee(
     db_employee.email = employee.email
     db_employee.slack_id = employee.slack_id
     db_employee.department = employee.department
+    db_employee.designation = employee.designation
     db_employee.role = employee.role
 
     db.commit()

@@ -8,7 +8,10 @@ from models.employee import Employee
 from models.evaluation_template import EvaluationTemplate
 from models.evaluation_assignment import EvaluationAssignment
 import uuid
+from models.evaluation_assignment_link import EvaluationAssignmentLink
 
+
+from models.evaluation_assignment_link import EvaluationAssignmentLink
 from utils.email_service import (
     send_employee_evaluation_email,
     send_supervisor_evaluation_email,
@@ -134,13 +137,60 @@ def create_assignment(
     db.commit()
 
     db.refresh(db_assignment)
+    # -----------------------------------------------
+    # Create Stage Access Links
+    # -----------------------------------------------
+
+    employee_link = EvaluationAssignmentLink(
+
+        assignment_id=db_assignment.id,
+
+        stage="employee",
+
+        access_token=uuid.uuid4(),
+
+        email=employee.email
+
+    )
+
+    supervisor_link = EvaluationAssignmentLink(
+
+        assignment_id=db_assignment.id,
+
+        stage="supervisor",
+
+        access_token=uuid.uuid4(),
+
+        email=supervisor.email
+
+    )
+
+    hr_link = EvaluationAssignmentLink(
+
+        assignment_id=db_assignment.id,
+
+        stage="hr",
+
+        access_token=uuid.uuid4(),
+
+        email=hr.email
+
+    )
+
+    db.add(employee_link)
+
+    db.add(supervisor_link)
+
+    db.add(hr_link)
+
+    db.commit()
     send_employee_evaluation_email(
 
         employee_name=employee.full_name,
 
         employee_email=employee.email,
 
-        access_token=access_token
+        access_token=str(employee_link.access_token)
 
     )
 
@@ -175,10 +225,52 @@ def get_assignment_by_token(
     db: Session = Depends(get_db)
 ):
 
+    # -----------------------------------------------
+    # Find Access Link
+    # -----------------------------------------------
+
+    link = (
+        db.query(EvaluationAssignmentLink)
+        .filter(
+            EvaluationAssignmentLink.access_token == access_token
+        )
+        .first()
+    )
+
+    if not link:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Invalid or expired evaluation link."
+        )
+    # -----------------------------------------------
+    # Prevent Reusing Completed Links
+    # -----------------------------------------------
+
+    if link.completed_at is not None:
+
+        raise HTTPException(
+            status_code=403,
+            detail="This evaluation has already been submitted."
+        )
+    # -----------------------------------------------
+    # Record First Open
+    # -----------------------------------------------
+
+    if link.opened_at is None:
+
+        link.opened_at = datetime.utcnow()
+
+        db.commit()
+
+    # -----------------------------------------------
+    # Load Assignment
+    # -----------------------------------------------
+
     assignment = (
         db.query(EvaluationAssignment)
         .filter(
-            EvaluationAssignment.access_token == access_token
+            EvaluationAssignment.id == link.assignment_id
         )
         .first()
     )
@@ -187,7 +279,7 @@ def get_assignment_by_token(
 
         raise HTTPException(
             status_code=404,
-            detail="Invalid or expired evaluation link."
+            detail="Evaluation assignment not found."
         )
 
     employee = (
@@ -289,6 +381,19 @@ def submit_evaluation(
 
         assignment.status = "waiting_for_supervisor"
 
+        employee_link = (
+            db.query(EvaluationAssignmentLink)
+            .filter(
+                EvaluationAssignmentLink.assignment_id == assignment.id,
+                EvaluationAssignmentLink.stage == "employee"
+            )
+            .first()
+        )
+
+        if employee_link:
+
+            employee_link.completed_at = datetime.now(timezone.utc)
+
         db.commit()
 
         db.refresh(assignment)
@@ -313,6 +418,15 @@ def submit_evaluation(
 
         )
 
+        supervisor_link = (
+            db.query(EvaluationAssignmentLink)
+            .filter(
+                EvaluationAssignmentLink.assignment_id == assignment.id,
+                EvaluationAssignmentLink.stage == "supervisor"
+            )
+            .first()
+        )
+
         send_supervisor_evaluation_email(
 
             supervisor_name=supervisor.full_name,
@@ -321,7 +435,7 @@ def submit_evaluation(
 
             employee_name=employee.full_name,
 
-            access_token=assignment.access_token
+            access_token=str(supervisor_link.access_token)
 
         )
 
@@ -350,6 +464,19 @@ def submit_evaluation(
 
         assignment.status = "waiting_for_hr"
 
+        supervisor_link = (
+            db.query(EvaluationAssignmentLink)
+            .filter(
+                EvaluationAssignmentLink.assignment_id == assignment.id,
+                EvaluationAssignmentLink.stage == "supervisor"
+            )
+            .first()
+        )
+
+        if supervisor_link:
+
+            supervisor_link.completed_at = datetime.now(timezone.utc)
+
         db.commit()
 
         db.refresh(assignment)
@@ -371,6 +498,15 @@ def submit_evaluation(
             .first()
         )
 
+        hr_link = (
+            db.query(EvaluationAssignmentLink)
+            .filter(
+                EvaluationAssignmentLink.assignment_id == assignment.id,
+                EvaluationAssignmentLink.stage == "hr"
+            )
+            .first()
+        )
+
         send_hr_evaluation_email(
 
             hr_name=hr.full_name,
@@ -379,7 +515,7 @@ def submit_evaluation(
 
             employee_name=employee.full_name,
 
-            access_token=assignment.access_token
+            access_token=str(hr_link.access_token)
 
         )
     elif assignment.current_stage == "hr":
@@ -393,6 +529,19 @@ def submit_evaluation(
         assignment.current_stage = "completed"
 
         assignment.status = "completed"
+
+        hr_link = (
+            db.query(EvaluationAssignmentLink)
+            .filter(
+                EvaluationAssignmentLink.assignment_id == assignment.id,
+                EvaluationAssignmentLink.stage == "hr"
+            )
+            .first()
+        )
+
+        if hr_link:
+
+            hr_link.completed_at = datetime.now(timezone.utc)
 
         db.commit()
 

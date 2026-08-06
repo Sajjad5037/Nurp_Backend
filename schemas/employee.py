@@ -16,6 +16,8 @@ class EmployeeCreate(BaseModel):
 
     department: str | None = None
 
+    designation: str | None = None
+
     role: str
 
 
@@ -32,6 +34,8 @@ class EmployeeUpdate(BaseModel):
     slack_id: str | None = None
 
     department: str | None = None
+
+    designation: str | None = None
 
     role: str
 
@@ -51,6 +55,8 @@ class EmployeeResponse(BaseModel):
     slack_id: str | None
 
     department: str | None
+
+    designation: str | None
 
     role: str
 

@@ -40,6 +40,10 @@ class Employee(Base):
         String,
         nullable=True
     )
+    designation = Column(
+        String,
+        nullable=True
+    )
 
     role = Column(
         String,

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Dict
 
 from pydantic import BaseModel
-
+from uuid import UUID
 
 # --------------------------------------------------
 # Create Evaluation Assignment
@@ -31,7 +31,29 @@ class EvaluationAssignmentUpdate(BaseModel):
 class EvaluationSubmission(BaseModel):
 
     responses: dict[str, Any]
+class EvaluationAssignmentLinkResponse(BaseModel):
 
+    id: int
+
+    assignment_id: int
+
+    stage: str
+
+    access_token: UUID
+
+    email: str | None
+
+    created_at: datetime
+
+    opened_at: datetime | None
+
+    completed_at: datetime | None
+
+    expires_at: datetime | None
+
+    class Config:
+
+        from_attributes = True
 # --------------------------------------------------
 # Response
 # --------------------------------------------------
