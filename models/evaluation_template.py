@@ -30,6 +30,11 @@ class EvaluationTemplate(Base):
         nullable=False
     )
 
+    workflow_type = Column(
+        String,
+        nullable=True
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),

@@ -1,4 +1,6 @@
+from calendar import month_name
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -7,6 +9,11 @@ from datetime import datetime, timezone
 from models.employee import Employee
 from models.evaluation_template import EvaluationTemplate
 from models.evaluation_assignment import EvaluationAssignment
+from models.evaluation_cycle import EvaluationCycle
+from models.finalized_goal import FinalizedGoal
+from models.finalized_kpi import FinalizedKPI
+from services.evaluation_cycle_service import get_current_evaluation_cycle
+from services.finalized_target_service import extract_finalized_targets
 import uuid
 from models.evaluation_assignment_link import EvaluationAssignmentLink
 
@@ -27,6 +34,32 @@ router = APIRouter(
     prefix="/evaluation-assignments",
     tags=["Evaluation Assignments"]
 )
+
+WORKFLOW_TYPES = {
+    "goal_kpi_setting",
+    "employee_evaluation",
+}
+
+
+def resolve_workflow_type(
+    requested_type,
+    workflow_json
+):
+
+    workflow_type = (
+        requested_type or
+        workflow_json.get("type") or
+        "goal_kpi_setting"
+    )
+
+    if workflow_type not in WORKFLOW_TYPES:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid workflow type."
+        )
+
+    return workflow_type
 
 
 # --------------------------------------------------
@@ -106,6 +139,59 @@ def create_assignment(
             detail="Evaluation template not found."
         )
 
+    workflow_type = resolve_workflow_type(
+        assignment.workflow_type,
+        template.workflow_json
+    )
+
+    evaluation_cycle = None
+
+    if workflow_type == "employee_evaluation":
+
+        if assignment.evaluation_cycle_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "evaluation_cycle_id is required for "
+                    "employee_evaluation assignments."
+                )
+            )
+
+        evaluation_cycle = (
+            db.query(EvaluationCycle)
+            .filter(EvaluationCycle.id == assignment.evaluation_cycle_id)
+            .first()
+        )
+
+        if not evaluation_cycle:
+            raise HTTPException(
+                status_code=404,
+                detail="Evaluation cycle not found."
+            )
+
+        duplicate_assignment = (
+            db.query(EvaluationAssignment)
+            .filter(
+                EvaluationAssignment.employee_id == assignment.employee_id,
+                EvaluationAssignment.evaluation_cycle_id == evaluation_cycle.id,
+                EvaluationAssignment.workflow_type == "employee_evaluation"
+            )
+            .first()
+        )
+
+        if duplicate_assignment:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "An Employee Evaluation already exists for this "
+                    "employee and Evaluation Cycle."
+                )
+            )
+
+    elif workflow_type == "goal_kpi_setting":
+
+        evaluation_cycle = get_current_evaluation_cycle(db)
+
     # -----------------------------------------------
     # Create Assignment
     # -----------------------------------------------
@@ -124,6 +210,12 @@ def create_assignment(
 
         workflow_json=template.workflow_json,
 
+        workflow_type=workflow_type,
+
+        evaluation_cycle_id=(
+            evaluation_cycle.id if evaluation_cycle else None
+        ),
+
         access_token=access_token,
 
         current_stage="employee",
@@ -134,7 +226,21 @@ def create_assignment(
 
     db.add(db_assignment)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+
+        if "uq_employee_evaluation_assignment_cycle" in str(error.orig):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "An Employee Evaluation already exists for this "
+                    "employee and Evaluation Cycle."
+                )
+            )
+
+        raise
 
     db.refresh(db_assignment)
     # -----------------------------------------------
@@ -295,6 +401,70 @@ def get_assignment_by_token(
             detail="Employee not found."
         )
 
+    supervisor = (
+        db.query(Employee)
+        .filter(Employee.id == assignment.supervisor_id)
+        .first()
+    )
+
+    review_cycle = None
+    review_cycle_months = None
+    finalized_goals = []
+    finalized_kpis = []
+
+    if assignment.evaluation_cycle_id is not None:
+
+        cycle = (
+            db.query(EvaluationCycle)
+            .filter(
+                EvaluationCycle.id == assignment.evaluation_cycle_id
+            )
+            .first()
+        )
+
+        if cycle:
+            review_cycle = (
+                f"Q{cycle.quarter} {cycle.year} "
+                f"({cycle.start_date.strftime('%b')} "
+                f"– {cycle.end_date.strftime('%b')})"
+            )
+            review_cycle_months = [
+                month_name[month]
+                for month in range(
+                    cycle.start_date.month,
+                    cycle.end_date.month + 1,
+                )
+            ]
+
+    if (
+        assignment.workflow_type == "employee_evaluation"
+        and assignment.evaluation_cycle_id is not None
+    ):
+        finalized_goals = (
+            db.query(FinalizedGoal)
+            .filter(
+                FinalizedGoal.employee_id == assignment.employee_id,
+                FinalizedGoal.evaluation_cycle_id == assignment.evaluation_cycle_id,
+            )
+            .order_by(FinalizedGoal.sequence.asc())
+            .all()
+        )
+        finalized_kpis = (
+            db.query(FinalizedKPI)
+            .join(
+                EvaluationAssignment,
+                FinalizedKPI.source_assignment_id == EvaluationAssignment.id,
+            )
+            .filter(
+                FinalizedKPI.employee_id == assignment.employee_id,
+                EvaluationAssignment.employee_id == assignment.employee_id,
+                EvaluationAssignment.evaluation_cycle_id == assignment.evaluation_cycle_id,
+                EvaluationAssignment.workflow_type == "goal_kpi_setting",
+            )
+            .order_by(FinalizedKPI.sequence.asc())
+            .all()
+        )
+
     print("======================================")
     print("Evaluation Assignment:", assignment.id)
     print("Current Stage:", assignment.current_stage)
@@ -317,7 +487,38 @@ def get_assignment_by_token(
 
         "employee_email": employee.email,
 
+        "supervisor_name": (
+            supervisor.full_name if supervisor else None
+        ),
+
+        "department": employee.department,
+
+        "review_cycle": review_cycle,
+
+        "review_cycle_months": review_cycle_months,
+
+        "finalized_goals": [
+            {
+                "id": goal.id,
+                "sequence": goal.sequence,
+                "description": goal.description,
+            }
+            for goal in finalized_goals
+        ],
+
+        "finalized_kpis": [
+            {
+                "id": kpi.id,
+                "sequence": kpi.sequence,
+                "title": kpi.title,
+                "expectation": kpi.expectation,
+            }
+            for kpi in finalized_kpis
+        ],
+
         "current_stage": assignment.current_stage,
+
+        "access_stage": link.stage,
 
         "status": assignment.status,
 
@@ -340,6 +541,8 @@ def submit_evaluation(
     assignment_id: int,
 
     submission: EvaluationSubmission,
+
+    access_stage: str | None = None,
 
     db: Session = Depends(get_db)
 
@@ -364,6 +567,69 @@ def submit_evaluation(
             detail="Evaluation assignment not found."
 
         )
+
+    # ------------------------------------------
+    # Independent Employee Evaluation Workflow
+    # ------------------------------------------
+
+    if assignment.workflow_type == "employee_evaluation":
+
+        if access_stage not in {
+            "employee",
+            "supervisor",
+            "hr"
+        }:
+
+            raise HTTPException(
+
+                status_code=400,
+
+                detail=(
+                    "A valid access_stage is required for "
+                    "employee_evaluation submissions."
+                )
+
+            )
+
+        if access_stage == "employee":
+
+            assignment.employee_responses = submission.responses
+
+            assignment.employee_completed_at = datetime.now(
+                timezone.utc
+            )
+
+        elif access_stage == "supervisor":
+
+            assignment.supervisor_responses = submission.responses
+
+            assignment.supervisor_completed_at = datetime.now(
+                timezone.utc
+            )
+
+        elif access_stage == "hr":
+
+            assignment.hr_responses = submission.responses
+
+            assignment.hr_completed_at = datetime.now(
+                timezone.utc
+            )
+
+        db.commit()
+
+        db.refresh(assignment)
+
+        return {
+
+            "message": "Evaluation saved successfully.",
+
+            "current_stage": assignment.current_stage,
+
+            "status": assignment.status,
+
+            "access_stage": access_stage
+
+        }
 
     # ------------------------------------------
     # Employee Submission
@@ -546,6 +812,8 @@ def submit_evaluation(
         db.commit()
 
         db.refresh(assignment)
+
+        extract_finalized_targets(db, assignment.id)
     else:
 
         raise HTTPException(

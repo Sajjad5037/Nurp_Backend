@@ -18,6 +18,10 @@ class EvaluationAssignmentCreate(BaseModel):
 
     hr_id: int
 
+    workflow_type: str | None = None
+
+    evaluation_cycle_id: int | None = None
+
 
 # --------------------------------------------------
 # Update Evaluation Assignment
@@ -70,7 +74,11 @@ class EvaluationAssignmentResponse(BaseModel):
 
     hr_id: int
 
+    evaluation_cycle_id: int | None
+
     workflow_json: Dict[str, Any]
+
+    workflow_type: str
 
     current_stage: str
 

@@ -4,6 +4,7 @@ from sqlalchemy import (
     String,
     ForeignKey,
     DateTime,
+    UniqueConstraint,
     func
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -14,6 +15,14 @@ from database import Base
 class EvaluationAssignment(Base):
 
     __tablename__ = "evaluation_assignments"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "id",
+            "employee_id",
+            name="uq_evaluation_assignments_id_employee"
+        ),
+    )
 
     id = Column(
         Integer,
@@ -48,6 +57,19 @@ class EvaluationAssignment(Base):
     workflow_json = Column(
         JSONB,
         nullable=False
+    )
+
+    workflow_type = Column(
+        String,
+        nullable=False,
+        default="goal_kpi_setting",
+        server_default="goal_kpi_setting"
+    )
+
+    evaluation_cycle_id = Column(
+        Integer,
+        ForeignKey("evaluation_cycles.id"),
+        nullable=True
     )
 
     current_stage = Column(

@@ -37,6 +37,8 @@ def create_template(
 
         workflow_json=template.workflow_json,
 
+        workflow_type=template.workflow_type,
+
         status="draft"
 
     )
@@ -138,6 +140,8 @@ def update_template(
     template.name = updated.name
 
     template.workflow_json = updated.workflow_json
+
+    template.workflow_type = updated.workflow_type
 
     db.commit()
 

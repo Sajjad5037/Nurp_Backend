@@ -13,6 +13,8 @@ class EvaluationTemplateCreate(BaseModel):
 
     workflow_json: Dict[str, Any]
 
+    workflow_type: str | None = None
+
 
 # ------------------------------------------------------------------
 # Update Schema
@@ -23,6 +25,8 @@ class EvaluationTemplateUpdate(BaseModel):
     name: str
 
     workflow_json: Dict[str, Any]
+
+    workflow_type: str | None = None
 
 
 # ------------------------------------------------------------------
@@ -38,6 +42,8 @@ class EvaluationTemplateResponse(BaseModel):
     status: str
 
     workflow_json: Dict[str, Any]
+
+    workflow_type: str | None
 
     created_at: datetime
 
