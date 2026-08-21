@@ -60,6 +60,8 @@ class EmployeeResponse(BaseModel):
 
     role: str
 
+    is_existing_employee: bool
+
     created_at: datetime
 
     updated_at: datetime

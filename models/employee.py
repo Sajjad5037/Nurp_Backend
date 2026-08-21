@@ -3,6 +3,7 @@ from sqlalchemy import (
     Integer,
     String,
     DateTime,
+    Boolean,
     func
 )
 
@@ -40,6 +41,7 @@ class Employee(Base):
         String,
         nullable=True
     )
+
     designation = Column(
         String,
         nullable=True
@@ -49,6 +51,12 @@ class Employee(Base):
         String,
         nullable=False,
         default="Employee"
+    )
+
+    is_existing_employee = Column(
+        Boolean,
+        nullable=False,
+        default=False
     )
 
     created_at = Column(

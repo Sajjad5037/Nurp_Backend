@@ -149,24 +149,21 @@ def create_assignment(
     if workflow_type == "employee_evaluation":
 
         if assignment.evaluation_cycle_id is None:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "evaluation_cycle_id is required for "
-                    "employee_evaluation assignments."
-                )
+            evaluation_cycle = get_current_evaluation_cycle(db)
+        else:
+            evaluation_cycle = (
+                db.query(EvaluationCycle)
+                .filter(EvaluationCycle.id == assignment.evaluation_cycle_id)
+                .first()
             )
-
-        evaluation_cycle = (
-            db.query(EvaluationCycle)
-            .filter(EvaluationCycle.id == assignment.evaluation_cycle_id)
-            .first()
-        )
 
         if not evaluation_cycle:
             raise HTTPException(
-                status_code=404,
-                detail="Evaluation cycle not found."
+                status_code=400,
+                detail=(
+                    "No evaluation cycle is available for "
+                    "this employee evaluation assignment."
+                )
             )
 
         duplicate_assignment = (
@@ -290,6 +287,8 @@ def create_assignment(
     db.add(hr_link)
 
     db.commit()
+    db.commit()
+
     send_employee_evaluation_email(
 
         employee_name=employee.full_name,
@@ -299,6 +298,32 @@ def create_assignment(
         access_token=str(employee_link.access_token)
 
     )
+
+    if workflow_type == "employee_evaluation":
+
+        send_supervisor_evaluation_email(
+
+            supervisor_name=supervisor.full_name,
+
+            supervisor_email=supervisor.email,
+
+            employee_name=employee.full_name,
+
+            access_token=str(supervisor_link.access_token)
+
+        )
+
+        send_hr_evaluation_email(
+
+            hr_name=hr.full_name,
+
+            hr_email=hr.email,
+
+            employee_name=employee.full_name,
+
+            access_token=str(hr_link.access_token)
+
+        )
 
     return db_assignment
 
@@ -808,6 +833,16 @@ def submit_evaluation(
         if hr_link:
 
             hr_link.completed_at = datetime.now(timezone.utc)
+
+        if assignment.workflow_type == "goal_kpi_setting":
+            employee = (
+                db.query(Employee)
+                .filter(Employee.id == assignment.employee_id)
+                .first()
+            )
+
+            if employee:
+                employee.is_existing_employee = True
 
         db.commit()
 
