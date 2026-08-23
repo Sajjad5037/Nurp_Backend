@@ -75,6 +75,16 @@ def create_assignment(
     db: Session = Depends(get_db)
 ):
 
+    print("==============================================")
+    print("CREATE EVALUATION ASSIGNMENT DEBUG")
+    print("==============================================")
+    print("employee_id:", assignment.employee_id)
+    print("supervisor_id:", assignment.supervisor_id)
+    print("hr_id:", assignment.hr_id)
+    print("template_id:", assignment.template_id)
+    print("requested workflow_type:", assignment.workflow_type)
+    print("evaluation_cycle_id:", assignment.evaluation_cycle_id)
+
     # -----------------------------------------------
     # Validate Employee
     # -----------------------------------------------
@@ -84,6 +94,9 @@ def create_assignment(
         .filter(Employee.id == assignment.employee_id)
         .first()
     )
+
+    print("Employee found:", employee.id if employee else None)
+    print("Employee name:", employee.full_name if employee else None)
 
     if not employee:
         raise HTTPException(
@@ -101,6 +114,9 @@ def create_assignment(
         .first()
     )
 
+    print("Supervisor found:", supervisor.id if supervisor else None)
+    print("Supervisor name:", supervisor.full_name if supervisor else None)
+
     if not supervisor:
         raise HTTPException(
             status_code=404,
@@ -116,6 +132,9 @@ def create_assignment(
         .filter(Employee.id == assignment.hr_id)
         .first()
     )
+
+    print("HR found:", hr.id if hr else None)
+    print("HR name:", hr.full_name if hr else None)
 
     if not hr:
         raise HTTPException(
@@ -133,16 +152,35 @@ def create_assignment(
         .first()
     )
 
+    print("----------------------------------------------")
+    print("TEMPLATE DEBUG")
+    print("Template found:", template.id if template else None)
+    print("Template name:", template.name if template else None)
+    print("Template workflow_type:", template.workflow_type if template else None)
+    print("Template status:", template.status if template else None)
+
     if not template:
         raise HTTPException(
             status_code=404,
             detail="Evaluation template not found."
         )
 
+    print("----------------------------------------------")
+    print("WORKFLOW TYPE RESOLUTION")
+    print("Requested workflow type:", assignment.workflow_type)
+    print(
+        "Workflow JSON type:",
+        template.workflow_json.get("type")
+        if template and template.workflow_json
+        else None
+    )
+
     workflow_type = resolve_workflow_type(
-        assignment.workflow_type,
+        assignment.workflow_type or template.workflow_type,
         template.workflow_json
     )
+
+    print("Resolved workflow type:", workflow_type)
 
     evaluation_cycle = None
 
@@ -156,6 +194,13 @@ def create_assignment(
                 .filter(EvaluationCycle.id == assignment.evaluation_cycle_id)
                 .first()
             )
+
+        print("----------------------------------------------")
+        print("EMPLOYEE EVALUATION CYCLE")
+        print(
+            "Evaluation cycle:",
+            evaluation_cycle.id if evaluation_cycle else None
+        )
 
         if not evaluation_cycle:
             raise HTTPException(
@@ -189,9 +234,22 @@ def create_assignment(
 
         evaluation_cycle = get_current_evaluation_cycle(db)
 
+        print("----------------------------------------------")
+        print("GOAL/KPI EVALUATION CYCLE")
+        print(
+            "Current evaluation cycle:",
+            evaluation_cycle.id if evaluation_cycle else None
+        )
+
     # -----------------------------------------------
     # Create Assignment
     # -----------------------------------------------
+
+    print("----------------------------------------------")
+    print("ABOUT TO CREATE ASSIGNMENT")
+    print("workflow_type:", workflow_type)
+    print("evaluation_cycle_id:", evaluation_cycle.id if evaluation_cycle else None)
+    print("template_id:", template.id if template else None)
 
     access_token = str(uuid.uuid4())
 
@@ -324,6 +382,11 @@ def create_assignment(
             access_token=str(hr_link.access_token)
 
         )
+
+    print("----------------------------------------------")
+    print("ASSIGNMENT CREATED SUCCESSFULLY")
+    print("assignment id:", db_assignment.id)
+    print("==============================================")
 
     return db_assignment
 
@@ -518,6 +581,8 @@ def get_assignment_by_token(
 
         "department": employee.department,
 
+        "designation": employee.designation,
+
         "review_cycle": review_cycle,
 
         "review_cycle_months": review_cycle_months,
@@ -618,6 +683,9 @@ def submit_evaluation(
 
         if access_stage == "employee":
 
+            print("DEBUG EMPLOYEE SUBMISSION RESPONSES:")
+            print(submission.responses)
+
             assignment.employee_responses = submission.responses
 
             assignment.employee_completed_at = datetime.now(
@@ -635,6 +703,26 @@ def submit_evaluation(
         elif access_stage == "hr":
 
             assignment.hr_responses = submission.responses
+
+            # HR can remove employee-submitted extra projects.
+            # Preserve all other employee response data unchanged.
+            updated_employee_projects = (
+                submission.responses.get("extra_projects")
+            )
+
+            if updated_employee_projects is not None:
+
+                employee_responses = (
+                    assignment.employee_responses or {}
+                ).copy()
+
+                employee_responses["extra_projects"] = (
+                    updated_employee_projects
+                )
+
+                assignment.employee_responses = (
+                    employee_responses
+                )
 
             assignment.hr_completed_at = datetime.now(
                 timezone.utc
@@ -661,6 +749,9 @@ def submit_evaluation(
     # ------------------------------------------
 
     if assignment.current_stage == "employee":
+
+        print("DEBUG EMPLOYEE SUBMISSION RESPONSES:")
+        print(submission.responses)
 
         assignment.employee_responses = submission.responses
 
