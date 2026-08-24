@@ -707,6 +707,22 @@ def submit_evaluation(
                 }
             )
 
+            assignment.current_stage = "supervisor"
+            assignment.status = "waiting_for_supervisor"
+
+            employee_link = (
+                db.query(EvaluationAssignmentLink)
+                .filter(
+                    EvaluationAssignmentLink.assignment_id == assignment.id,
+                    EvaluationAssignmentLink.stage == "employee"
+                )
+                .first()
+            )
+
+            if employee_link:
+
+                employee_link.completed_at = datetime.now(timezone.utc)
+
         elif access_stage == "supervisor":
 
             assignment.supervisor_responses = submission.responses
@@ -728,6 +744,22 @@ def submit_evaluation(
             assignment.supervisor_completed_at = datetime.now(
                 timezone.utc
             )
+
+            assignment.current_stage = "hr"
+            assignment.status = "waiting_for_hr"
+
+            supervisor_link = (
+                db.query(EvaluationAssignmentLink)
+                .filter(
+                    EvaluationAssignmentLink.assignment_id == assignment.id,
+                    EvaluationAssignmentLink.stage == "supervisor"
+                )
+                .first()
+            )
+
+            if supervisor_link:
+
+                supervisor_link.completed_at = datetime.now(timezone.utc)
 
         elif access_stage == "hr":
 
@@ -770,6 +802,22 @@ def submit_evaluation(
                     "status": "completed"
                 }
             )
+
+            assignment.current_stage = "completed"
+            assignment.status = "completed"
+
+            hr_link = (
+                db.query(EvaluationAssignmentLink)
+                .filter(
+                    EvaluationAssignmentLink.assignment_id == assignment.id,
+                    EvaluationAssignmentLink.stage == "hr"
+                )
+                .first()
+            )
+
+            if hr_link:
+
+                hr_link.completed_at = datetime.now(timezone.utc)
 
         db.commit()
 
