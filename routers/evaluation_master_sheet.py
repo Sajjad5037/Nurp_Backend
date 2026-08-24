@@ -1,3 +1,4 @@
+from calendar import month_name
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy import func
@@ -5,6 +6,7 @@ from sqlalchemy import func
 from database import get_db
 from models.employee import Employee
 from models.evaluation_assignment import EvaluationAssignment
+from models.evaluation_cycle import EvaluationCycle
 from models.finalized_goal import FinalizedGoal
 from models.finalized_kpi import FinalizedKPI
 
@@ -213,6 +215,62 @@ def get_master_sheet(
         .first()
     )
 
+    review_cycle = None
+    review_cycle_months = None
+    finalized_goals = []
+    finalized_kpis = []
+
+    if assignment.evaluation_cycle_id is not None:
+
+        cycle = (
+            db.query(EvaluationCycle)
+            .filter(EvaluationCycle.id == assignment.evaluation_cycle_id)
+            .first()
+        )
+
+        if cycle:
+            review_cycle = (
+                f"Q{cycle.quarter} {cycle.year} "
+                f"({cycle.start_date.strftime('%b')} "
+                f"- {cycle.end_date.strftime('%b')})"
+            )
+            review_cycle_months = [
+                month_name[month]
+                for month in range(
+                    cycle.start_date.month,
+                    cycle.end_date.month + 1,
+                )
+            ]
+
+    if (
+        assignment.workflow_type == "employee_evaluation"
+        and assignment.evaluation_cycle_id is not None
+    ):
+        finalized_goals = (
+            db.query(FinalizedGoal)
+            .filter(
+                FinalizedGoal.employee_id == assignment.employee_id,
+                FinalizedGoal.evaluation_cycle_id == assignment.evaluation_cycle_id,
+            )
+            .order_by(FinalizedGoal.sequence.asc())
+            .all()
+        )
+        finalized_kpis = (
+            db.query(FinalizedKPI)
+            .join(
+                EvaluationAssignment,
+                FinalizedKPI.source_assignment_id == EvaluationAssignment.id,
+            )
+            .filter(
+                FinalizedKPI.employee_id == assignment.employee_id,
+                EvaluationAssignment.employee_id == assignment.employee_id,
+                EvaluationAssignment.evaluation_cycle_id == assignment.evaluation_cycle_id,
+                EvaluationAssignment.workflow_type == "goal_kpi_setting",
+            )
+            .order_by(FinalizedKPI.sequence.asc())
+            .all()
+        )
+
     return {
 
         "id": assignment.id,
@@ -229,7 +287,34 @@ def get_master_sheet(
 
         "status": assignment.status,
 
+        "workflow_type": assignment.workflow_type,
+
         "workflow_json": assignment.workflow_json,
+
+        "department": employee.department if employee else None,
+
+        "review_cycle": review_cycle,
+
+        "review_cycle_months": review_cycle_months,
+
+        "finalized_goals": [
+            {
+                "id": goal.id,
+                "sequence": goal.sequence,
+                "description": goal.description,
+            }
+            for goal in finalized_goals
+        ],
+
+        "finalized_kpis": [
+            {
+                "id": kpi.id,
+                "sequence": kpi.sequence,
+                "title": kpi.title,
+                "expectation": kpi.expectation,
+            }
+            for kpi in finalized_kpis
+        ],
 
         "employee_responses": assignment.employee_responses,
 
