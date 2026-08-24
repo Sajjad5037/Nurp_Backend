@@ -39,6 +39,8 @@ class EmployeeUpdate(BaseModel):
 
     role: str
 
+    is_active: bool = True
+
 
 # --------------------------------------------------
 # Employee Response
@@ -61,6 +63,8 @@ class EmployeeResponse(BaseModel):
     role: str
 
     is_existing_employee: bool
+
+    is_active: bool
 
     created_at: datetime
 

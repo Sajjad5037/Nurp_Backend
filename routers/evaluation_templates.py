@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
+from models.evaluation_assignment import EvaluationAssignment
 from models.evaluation_template import EvaluationTemplate
 from schemas.evaluation_template import (
     EvaluationTemplateCreate,
@@ -67,10 +68,19 @@ def create_template(
     response_model=list[EvaluationTemplateResponse]
 )
 def get_templates(
+    include_inactive: bool = False,
     db: Session = Depends(get_db)
 ):
 
-    return db.query(EvaluationTemplate).order_by(
+    query = db.query(EvaluationTemplate)
+
+    if not include_inactive:
+
+        query = query.filter(
+            EvaluationTemplate.status != "inactive"
+        )
+
+    return query.order_by(
         EvaluationTemplate.created_at.desc()
     ).all()
 
@@ -142,6 +152,85 @@ def update_template(
     template.workflow_json = updated.workflow_json
 
     template.workflow_type = updated.workflow_type
+
+    db.commit()
+
+    db.refresh(template)
+
+    return template
+
+
+# ------------------------------------------------------------------
+# DEACTIVATE / DELETE
+# ------------------------------------------------------------------
+
+@router.delete(
+    "/{template_id}"
+)
+def delete_template(
+    template_id: int,
+    db: Session = Depends(get_db)
+):
+
+    template = db.query(EvaluationTemplate).filter(
+
+        EvaluationTemplate.id == template_id
+
+    ).first()
+
+    if not template:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Template not found."
+
+        )
+
+    template.status = "inactive"
+
+    db.commit()
+
+    db.refresh(template)
+
+    return {
+        "message": "Template deactivated successfully.",
+        "id": template_id,
+        "status": template.status
+    }
+
+
+# ------------------------------------------------------------------
+# ACTIVATE
+# ------------------------------------------------------------------
+
+@router.patch(
+    "/{template_id}/activate",
+    response_model=EvaluationTemplateResponse
+)
+def activate_template(
+    template_id: int,
+    db: Session = Depends(get_db)
+):
+
+    template = db.query(EvaluationTemplate).filter(
+
+        EvaluationTemplate.id == template_id
+
+    ).first()
+
+    if not template:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Template not found."
+
+        )
+
+    template.status = "active"
 
     db.commit()
 

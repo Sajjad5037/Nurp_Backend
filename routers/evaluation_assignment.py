@@ -14,6 +14,7 @@ from models.finalized_goal import FinalizedGoal
 from models.finalized_kpi import FinalizedKPI
 from services.evaluation_cycle_service import get_current_evaluation_cycle
 from services.finalized_target_service import extract_finalized_targets
+from services.evaluation_activity_log_service import log_evaluation_activity
 import uuid
 from models.evaluation_assignment_link import EvaluationAssignmentLink
 
@@ -692,9 +693,37 @@ def submit_evaluation(
                 timezone.utc
             )
 
+            log_evaluation_activity(
+                db=db,
+                assignment_id=assignment.id,
+                employee_id=assignment.employee_id,
+                actor_id=assignment.employee_id,
+                actor_role="employee",
+                workflow_type=assignment.workflow_type,
+                stage="employee",
+                action="submitted",
+                details={
+                    "status": "submitted"
+                }
+            )
+
         elif access_stage == "supervisor":
 
             assignment.supervisor_responses = submission.responses
+
+            log_evaluation_activity(
+                db=db,
+                assignment_id=assignment.id,
+                employee_id=assignment.employee_id,
+                actor_id=assignment.supervisor_id,
+                actor_role="supervisor",
+                workflow_type=assignment.workflow_type,
+                stage="supervisor",
+                action="submitted",
+                details={
+                    "status": "submitted"
+                }
+            )
 
             assignment.supervisor_completed_at = datetime.now(
                 timezone.utc
@@ -728,6 +757,20 @@ def submit_evaluation(
                 timezone.utc
             )
 
+            log_evaluation_activity(
+                db=db,
+                assignment_id=assignment.id,
+                employee_id=assignment.employee_id,
+                actor_id=assignment.hr_id,
+                actor_role="hr",
+                workflow_type=assignment.workflow_type,
+                stage="hr",
+                action="submitted",
+                details={
+                    "status": "completed"
+                }
+            )
+
         db.commit()
 
         db.refresh(assignment)
@@ -754,6 +797,22 @@ def submit_evaluation(
         print(submission.responses)
 
         assignment.employee_responses = submission.responses
+
+        if assignment.workflow_type == "goal_kpi_setting":
+
+            log_evaluation_activity(
+                db=db,
+                assignment_id=assignment.id,
+                employee_id=assignment.employee_id,
+                actor_id=assignment.employee_id,
+                actor_role="employee",
+                workflow_type=assignment.workflow_type,
+                stage="employee",
+                action="submitted",
+                details={
+                    "status": "submitted"
+                }
+            )
 
         assignment.employee_completed_at = datetime.now(
             timezone.utc
@@ -834,6 +893,22 @@ def submit_evaluation(
 
         assignment.supervisor_responses = submission.responses
 
+        if assignment.workflow_type == "goal_kpi_setting":
+
+            log_evaluation_activity(
+                db=db,
+                assignment_id=assignment.id,
+                employee_id=assignment.employee_id,
+                actor_id=assignment.supervisor_id,
+                actor_role="supervisor",
+                workflow_type=assignment.workflow_type,
+                stage="supervisor",
+                action="submitted",
+                details={
+                    "status": "submitted"
+                }
+            )
+
         print("------------------------------------")
         print("assignment.supervisor_responses BEFORE COMMIT:")
         print(assignment.supervisor_responses)
@@ -903,6 +978,22 @@ def submit_evaluation(
     elif assignment.current_stage == "hr":
 
         assignment.hr_responses = submission.responses
+
+        if assignment.workflow_type == "goal_kpi_setting":
+
+            log_evaluation_activity(
+                db=db,
+                assignment_id=assignment.id,
+                employee_id=assignment.employee_id,
+                actor_id=assignment.hr_id,
+                actor_role="hr",
+                workflow_type=assignment.workflow_type,
+                stage="hr",
+                action="submitted",
+                details={
+                    "status": "completed"
+                }
+            )
 
         assignment.hr_completed_at = datetime.now(
             timezone.utc
