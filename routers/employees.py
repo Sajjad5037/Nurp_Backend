@@ -28,17 +28,43 @@ def create_employee(
     db: Session = Depends(get_db)
 ):
 
+    print("==============================================")
+    print("CREATE EMPLOYEE DEBUG")
+    print("==============================================")
+    print("POST /employees received")
+    print("full_name:", employee.full_name)
+    print("email:", employee.email)
+    print("is_active:", getattr(employee, "is_active", None))
+
+    print("Checking for existing active employee with email:", employee.email)
+
     existing = (
         db.query(Employee)
         .filter(Employee.email == employee.email)
+        .filter(Employee.is_active == True)
         .first()
     )
 
+    print("Existing employee found:", existing is not None)
     if existing:
+        print("existing.id:", existing.id)
+        print("existing.full_name:", existing.full_name)
+        print("existing.email:", existing.email)
+        print("existing.is_active:", existing.is_active)
+
+    if existing:
+        print("CREATE EMPLOYEE REJECTED: active duplicate email")
+        print("existing employee id:", existing.id)
+        print("existing employee email:", existing.email)
+        print("existing employee is_active:", existing.is_active)
         raise HTTPException(
             status_code=400,
             detail="Employee with this email already exists."
         )
+
+    print("CREATING NEW EMPLOYEE")
+    print("email:", employee.email)
+    print("is_active:", getattr(employee, "is_active", None))
 
     db_employee = Employee(
         full_name=employee.full_name,
@@ -50,8 +76,20 @@ def create_employee(
     )
 
     db.add(db_employee)
-    db.commit()
+
+    try:
+        db.commit()
+    except Exception as e:
+        print("CREATE EMPLOYEE COMMIT FAILED")
+        print("exception:", repr(e))
+        raise
+
     db.refresh(db_employee)
+
+    print("CREATE EMPLOYEE SUCCESS")
+    print("created employee id:", db_employee.id)
+    print("email:", db_employee.email)
+    print("is_active:", db_employee.is_active)
 
     return db_employee
 
