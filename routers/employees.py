@@ -36,12 +36,12 @@ def create_employee(
     print("email:", employee.email)
     print("is_active:", getattr(employee, "is_active", None))
 
-    print("Checking for existing active employee with email:", employee.email)
+    print("Checking for existing employee with email and role:", employee.email, employee.role)
 
     existing = (
         db.query(Employee)
         .filter(Employee.email == employee.email)
-        .filter(Employee.is_active == True)
+        .filter(Employee.role == employee.role)
         .first()
     )
 
@@ -53,13 +53,13 @@ def create_employee(
         print("existing.is_active:", existing.is_active)
 
     if existing:
-        print("CREATE EMPLOYEE REJECTED: active duplicate email")
+        print("CREATE EMPLOYEE REJECTED: duplicate email and role")
         print("existing employee id:", existing.id)
         print("existing employee email:", existing.email)
         print("existing employee is_active:", existing.is_active)
         raise HTTPException(
             status_code=400,
-            detail="Employee with this email already exists."
+            detail="Employee with this email and role already exists."
         )
 
     print("CREATING NEW EMPLOYEE")

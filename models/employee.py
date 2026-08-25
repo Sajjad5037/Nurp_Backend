@@ -4,6 +4,7 @@ from sqlalchemy import (
     String,
     DateTime,
     Boolean,
+    UniqueConstraint,
     func
 )
 
@@ -13,6 +14,9 @@ from database import Base
 class Employee(Base):
 
     __tablename__ = "employees"
+    __table_args__ = (
+        UniqueConstraint("email", "role", name="uq_employees_email_role"),
+    )
 
     id = Column(
         Integer,
@@ -28,7 +32,6 @@ class Employee(Base):
     email = Column(
         String,
         nullable=False,
-        unique=True,
         index=True
     )
 
