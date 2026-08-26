@@ -346,7 +346,8 @@ def get_latest_master_sheets(
 
         .filter(
 
-            EvaluationAssignment.status == "completed"
+            (EvaluationAssignment.status == "completed") |
+            (EvaluationAssignment.workflow_type == "employee_evaluation")
 
         )
 
