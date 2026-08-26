@@ -80,6 +80,236 @@ def resolve_workflow_type(
     return workflow_type
 
 
+def _create_evaluation_assignment(
+    db: Session,
+    employee: Employee,
+    supervisor: Employee,
+    hr: Employee,
+    template: EvaluationTemplate,
+    requested_workflow_type: str | None,
+    evaluation_cycle_id: int | None
+):
+
+    print("----------------------------------------------")
+    print("WORKFLOW TYPE RESOLUTION")
+    print("Requested workflow type:", requested_workflow_type)
+    print(
+        "Workflow JSON type:",
+        template.workflow_json.get("type")
+        if template and template.workflow_json
+        else None
+    )
+
+    workflow_type = resolve_workflow_type(
+        requested_workflow_type or template.workflow_type,
+        template.workflow_json
+    )
+
+    print("Resolved workflow type:", workflow_type)
+
+    evaluation_cycle = None
+
+    if workflow_type == "employee_evaluation":
+
+        if evaluation_cycle_id is None:
+            evaluation_cycle = get_current_evaluation_cycle(db)
+        else:
+            evaluation_cycle = (
+                db.query(EvaluationCycle)
+                .filter(EvaluationCycle.id == evaluation_cycle_id)
+                .first()
+            )
+
+        print("----------------------------------------------")
+        print("EMPLOYEE EVALUATION CYCLE")
+        print(
+            "Evaluation cycle:",
+            evaluation_cycle.id if evaluation_cycle else None
+        )
+
+        if not evaluation_cycle:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "No evaluation cycle is available for "
+                    "this employee evaluation assignment."
+                )
+            )
+
+        duplicate_assignment = (
+            db.query(EvaluationAssignment)
+            .filter(
+                EvaluationAssignment.employee_id == employee.id,
+                EvaluationAssignment.evaluation_cycle_id == evaluation_cycle.id,
+                EvaluationAssignment.workflow_type == "employee_evaluation"
+            )
+            .first()
+        )
+
+        if duplicate_assignment:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "An Employee Evaluation already exists for this "
+                    "employee and Evaluation Cycle."
+                )
+            )
+
+    elif workflow_type == "goal_kpi_setting":
+
+        evaluation_cycle = get_current_evaluation_cycle(db)
+
+        print("----------------------------------------------")
+        print("GOAL/KPI EVALUATION CYCLE")
+        print(
+            "Current evaluation cycle:",
+            evaluation_cycle.id if evaluation_cycle else None
+        )
+
+    # -----------------------------------------------
+    # Create Assignment
+    # -----------------------------------------------
+
+    print("----------------------------------------------")
+    print("ABOUT TO CREATE ASSIGNMENT")
+    print("workflow_type:", workflow_type)
+    print("evaluation_cycle_id:", evaluation_cycle.id if evaluation_cycle else None)
+    print("template_id:", template.id if template else None)
+
+    access_token = str(uuid.uuid4())
+
+    db_assignment = EvaluationAssignment(
+
+        template_id=template.id,
+
+        employee_id=employee.id,
+
+        supervisor_id=supervisor.id,
+
+        hr_id=hr.id,
+
+        workflow_json=template.workflow_json,
+
+        workflow_type=workflow_type,
+
+        evaluation_cycle_id=(
+            evaluation_cycle.id if evaluation_cycle else None
+        ),
+
+        access_token=access_token,
+
+        current_stage="employee",
+
+        status="waiting_for_employee"
+
+    )
+
+    db.add(db_assignment)
+
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+
+        if "uq_employee_evaluation_assignment_cycle" in str(error.orig):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "An Employee Evaluation already exists for this "
+                    "employee and Evaluation Cycle."
+                )
+            )
+
+        raise
+
+    db.refresh(db_assignment)
+    # -----------------------------------------------
+    # Create Stage Access Links
+    # -----------------------------------------------
+
+    employee_link = EvaluationAssignmentLink(
+
+        assignment_id=db_assignment.id,
+
+        stage="employee",
+
+        access_token=uuid.uuid4(),
+
+        email=employee.email
+
+    )
+
+    supervisor_link = EvaluationAssignmentLink(
+
+        assignment_id=db_assignment.id,
+
+        stage="supervisor",
+
+        access_token=uuid.uuid4(),
+
+        email=supervisor.email
+
+    )
+
+    hr_link = EvaluationAssignmentLink(
+
+        assignment_id=db_assignment.id,
+
+        stage="hr",
+
+        access_token=uuid.uuid4(),
+
+        email=hr.email
+
+    )
+
+    db.add(employee_link)
+
+    db.add(supervisor_link)
+
+    db.add(hr_link)
+
+    db.commit()
+
+    send_employee_evaluation_email(
+
+        employee_name=employee.full_name,
+
+        employee_email=employee.email,
+
+        access_token=str(employee_link.access_token)
+
+    )
+
+    if workflow_type == "employee_evaluation":
+
+        send_supervisor_evaluation_email(
+
+            supervisor_name=supervisor.full_name,
+
+            supervisor_email=supervisor.email,
+
+            employee_name=employee.full_name,
+
+            access_token=str(supervisor_link.access_token)
+
+        )
+
+        send_hr_evaluation_email(
+
+            hr_name=hr.full_name,
+
+            hr_email=hr.email,
+
+            employee_name=employee.full_name,
+
+            access_token=str(hr_link.access_token)
+
+        )
+
+    return db_assignment
+
+
 # --------------------------------------------------
 # Create Evaluation Assignment
 # --------------------------------------------------
@@ -183,223 +413,15 @@ def create_assignment(
             detail="Evaluation template not found."
         )
 
-    print("----------------------------------------------")
-    print("WORKFLOW TYPE RESOLUTION")
-    print("Requested workflow type:", assignment.workflow_type)
-    print(
-        "Workflow JSON type:",
-        template.workflow_json.get("type")
-        if template and template.workflow_json
-        else None
+    db_assignment = _create_evaluation_assignment(
+        db=db,
+        employee=employee,
+        supervisor=supervisor,
+        hr=hr,
+        template=template,
+        requested_workflow_type=assignment.workflow_type,
+        evaluation_cycle_id=assignment.evaluation_cycle_id
     )
-
-    workflow_type = resolve_workflow_type(
-        assignment.workflow_type or template.workflow_type,
-        template.workflow_json
-    )
-
-    print("Resolved workflow type:", workflow_type)
-
-    evaluation_cycle = None
-
-    if workflow_type == "employee_evaluation":
-
-        if assignment.evaluation_cycle_id is None:
-            evaluation_cycle = get_current_evaluation_cycle(db)
-        else:
-            evaluation_cycle = (
-                db.query(EvaluationCycle)
-                .filter(EvaluationCycle.id == assignment.evaluation_cycle_id)
-                .first()
-            )
-
-        print("----------------------------------------------")
-        print("EMPLOYEE EVALUATION CYCLE")
-        print(
-            "Evaluation cycle:",
-            evaluation_cycle.id if evaluation_cycle else None
-        )
-
-        if not evaluation_cycle:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "No evaluation cycle is available for "
-                    "this employee evaluation assignment."
-                )
-            )
-
-        duplicate_assignment = (
-            db.query(EvaluationAssignment)
-            .filter(
-                EvaluationAssignment.employee_id == assignment.employee_id,
-                EvaluationAssignment.evaluation_cycle_id == evaluation_cycle.id,
-                EvaluationAssignment.workflow_type == "employee_evaluation"
-            )
-            .first()
-        )
-
-        if duplicate_assignment:
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    "An Employee Evaluation already exists for this "
-                    "employee and Evaluation Cycle."
-                )
-            )
-
-    elif workflow_type == "goal_kpi_setting":
-
-        evaluation_cycle = get_current_evaluation_cycle(db)
-
-        print("----------------------------------------------")
-        print("GOAL/KPI EVALUATION CYCLE")
-        print(
-            "Current evaluation cycle:",
-            evaluation_cycle.id if evaluation_cycle else None
-        )
-
-    # -----------------------------------------------
-    # Create Assignment
-    # -----------------------------------------------
-
-    print("----------------------------------------------")
-    print("ABOUT TO CREATE ASSIGNMENT")
-    print("workflow_type:", workflow_type)
-    print("evaluation_cycle_id:", evaluation_cycle.id if evaluation_cycle else None)
-    print("template_id:", template.id if template else None)
-
-    access_token = str(uuid.uuid4())
-
-    db_assignment = EvaluationAssignment(
-
-        template_id=assignment.template_id,
-
-        employee_id=assignment.employee_id,
-
-        supervisor_id=assignment.supervisor_id,
-
-        hr_id=assignment.hr_id,
-
-        workflow_json=template.workflow_json,
-
-        workflow_type=workflow_type,
-
-        evaluation_cycle_id=(
-            evaluation_cycle.id if evaluation_cycle else None
-        ),
-
-        access_token=access_token,
-
-        current_stage="employee",
-
-        status="waiting_for_employee"
-
-    )
-
-    db.add(db_assignment)
-
-    try:
-        db.commit()
-    except IntegrityError as error:
-        db.rollback()
-
-        if "uq_employee_evaluation_assignment_cycle" in str(error.orig):
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    "An Employee Evaluation already exists for this "
-                    "employee and Evaluation Cycle."
-                )
-            )
-
-        raise
-
-    db.refresh(db_assignment)
-    # -----------------------------------------------
-    # Create Stage Access Links
-    # -----------------------------------------------
-
-    employee_link = EvaluationAssignmentLink(
-
-        assignment_id=db_assignment.id,
-
-        stage="employee",
-
-        access_token=uuid.uuid4(),
-
-        email=employee.email
-
-    )
-
-    supervisor_link = EvaluationAssignmentLink(
-
-        assignment_id=db_assignment.id,
-
-        stage="supervisor",
-
-        access_token=uuid.uuid4(),
-
-        email=supervisor.email
-
-    )
-
-    hr_link = EvaluationAssignmentLink(
-
-        assignment_id=db_assignment.id,
-
-        stage="hr",
-
-        access_token=uuid.uuid4(),
-
-        email=hr.email
-
-    )
-
-    db.add(employee_link)
-
-    db.add(supervisor_link)
-
-    db.add(hr_link)
-
-    db.commit()
-    db.commit()
-
-    send_employee_evaluation_email(
-
-        employee_name=employee.full_name,
-
-        employee_email=employee.email,
-
-        access_token=str(employee_link.access_token)
-
-    )
-
-    if workflow_type == "employee_evaluation":
-
-        send_supervisor_evaluation_email(
-
-            supervisor_name=supervisor.full_name,
-
-            supervisor_email=supervisor.email,
-
-            employee_name=employee.full_name,
-
-            access_token=str(supervisor_link.access_token)
-
-        )
-
-        send_hr_evaluation_email(
-
-            hr_name=hr.full_name,
-
-            hr_email=hr.email,
-
-            employee_name=employee.full_name,
-
-            access_token=str(hr_link.access_token)
-
-        )
 
     print("----------------------------------------------")
     print("ASSIGNMENT CREATED SUCCESSFULLY")
@@ -1156,6 +1178,80 @@ def submit_evaluation(
         db.refresh(assignment)
 
         extract_finalized_targets(db, assignment.id)
+
+        # ------------------------------------------
+        # Auto-launch the Employee Evaluation for the
+        # same employee/supervisor/HR/template now that
+        # the legacy Goal & KPI Setting is complete.
+        # Any failure here (e.g. no current evaluation
+        # cycle) is raised as an HTTPException instead of
+        # being swallowed, so the caller is not told the
+        # submission succeeded when the follow-up
+        # evaluation could not be created. The Goal & KPI
+        # assignment itself remains committed as completed.
+        # ------------------------------------------
+
+        completed_employee = (
+            db.query(Employee)
+            .filter(Employee.id == assignment.employee_id)
+            .first()
+        )
+
+        completed_supervisor = (
+            db.query(Employee)
+            .filter(Employee.id == assignment.supervisor_id)
+            .first()
+        )
+
+        completed_hr = (
+            db.query(Employee)
+            .filter(Employee.id == assignment.hr_id)
+            .first()
+        )
+
+        employee_evaluation_template = (
+            db.query(EvaluationTemplate)
+            .filter(
+                EvaluationTemplate.workflow_type == "employee_evaluation",
+                EvaluationTemplate.status != "inactive",
+            )
+            .order_by(EvaluationTemplate.created_at.desc())
+            .first()
+        )
+
+        if not (
+            completed_employee and
+            completed_supervisor and
+            completed_hr
+        ):
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Goal & KPI Setting was completed, but the "
+                    "follow-up Employee Evaluation could not be "
+                    "created because required records were missing."
+                )
+            )
+
+        if not employee_evaluation_template:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Goal & KPI Setting was completed, but no active "
+                    "Employee Evaluation template is available to "
+                    "create the follow-up evaluation."
+                )
+            )
+
+        _create_evaluation_assignment(
+            db=db,
+            employee=completed_employee,
+            supervisor=completed_supervisor,
+            hr=completed_hr,
+            template=employee_evaluation_template,
+            requested_workflow_type="employee_evaluation",
+            evaluation_cycle_id=None
+        )
     else:
 
         raise HTTPException(
