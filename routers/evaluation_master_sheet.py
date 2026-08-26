@@ -283,6 +283,8 @@ def get_master_sheet(
 
         "supervisor_email": supervisor.email if supervisor else None,
 
+        "designation": employee.designation if employee else None,
+
         "current_stage": assignment.current_stage,
 
         "status": assignment.status,

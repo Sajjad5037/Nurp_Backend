@@ -41,6 +41,23 @@ WORKFLOW_TYPES = {
     "employee_evaluation",
 }
 
+LEGACY_GOAL_KPI_WORKFLOW_TYPES = {
+    "goal_kpi_setting",
+    "employee_goal_kpi",
+}
+
+
+def is_legacy_goal_kpi_assignment(assignment):
+
+    return (
+        assignment.workflow_type != "employee_evaluation" and
+        (
+            assignment.workflow_type in LEGACY_GOAL_KPI_WORKFLOW_TYPES or
+            (assignment.workflow_json or {}).get("type") in
+            LEGACY_GOAL_KPI_WORKFLOW_TYPES
+        )
+    )
+
 
 def resolve_workflow_type(
     requested_type,
@@ -438,11 +455,31 @@ def get_assignment_by_token(
             status_code=404,
             detail="Invalid or expired evaluation link."
         )
+
+    assignment = (
+        db.query(EvaluationAssignment)
+        .filter(
+            EvaluationAssignment.id == link.assignment_id
+        )
+        .first()
+    )
+
+    if not assignment:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Evaluation assignment not found."
+        )
     # -----------------------------------------------
     # Prevent Reusing Completed Links
     # -----------------------------------------------
 
-    if link.completed_at is not None:
+    allow_completed_hr_link = (
+        link.stage == "hr" and
+        is_legacy_goal_kpi_assignment(assignment)
+    )
+
+    if link.completed_at is not None and not allow_completed_hr_link:
 
         raise HTTPException(
             status_code=403,
@@ -461,21 +498,6 @@ def get_assignment_by_token(
     # -----------------------------------------------
     # Load Assignment
     # -----------------------------------------------
-
-    assignment = (
-        db.query(EvaluationAssignment)
-        .filter(
-            EvaluationAssignment.id == link.assignment_id
-        )
-        .first()
-    )
-
-    if not assignment:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Evaluation assignment not found."
-        )
 
     employee = (
         db.query(Employee)
@@ -635,6 +657,8 @@ def submit_evaluation(
 
     access_stage: str | None = None,
 
+    access_token: str | None = None,
+
     db: Session = Depends(get_db)
 
 ):
@@ -658,6 +682,59 @@ def submit_evaluation(
             detail="Evaluation assignment not found."
 
         )
+
+    if (
+        assignment.current_stage == "completed" and
+        is_legacy_goal_kpi_assignment(assignment)
+    ):
+        hr_link = (
+            db.query(EvaluationAssignmentLink)
+            .filter(
+                EvaluationAssignmentLink.assignment_id == assignment.id,
+                EvaluationAssignmentLink.stage == "hr",
+                EvaluationAssignmentLink.access_token == access_token,
+            )
+            .first()
+        )
+
+        if not hr_link:
+
+            raise HTTPException(
+                status_code=403,
+                detail="A valid HR evaluation link is required."
+            )
+
+        assignment.hr_responses = submission.responses
+        assignment.hr_completed_at = datetime.now(timezone.utc)
+
+        log_evaluation_activity(
+            db=db,
+            assignment_id=assignment.id,
+            employee_id=assignment.employee_id,
+            actor_id=assignment.hr_id,
+            actor_role="hr",
+            workflow_type=assignment.workflow_type,
+            stage="hr",
+            action="resubmitted",
+            details={
+                "status": "completed"
+            }
+        )
+
+        db.commit()
+        db.refresh(assignment)
+
+        extract_finalized_targets(db, assignment.id)
+
+        return {
+
+            "message": "Evaluation resubmitted successfully.",
+
+            "current_stage": assignment.current_stage,
+
+            "status": assignment.status
+
+        }
 
     # ------------------------------------------
     # Independent Employee Evaluation Workflow
