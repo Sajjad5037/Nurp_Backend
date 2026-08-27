@@ -41,6 +41,8 @@ class EmployeeUpdate(BaseModel):
 
     is_active: bool = True
 
+    is_existing_employee: bool = False
+
 
 # --------------------------------------------------
 # Employee Response

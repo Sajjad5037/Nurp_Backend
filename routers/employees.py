@@ -174,6 +174,7 @@ def update_employee(
     db_employee.designation = employee.designation
     db_employee.role = employee.role
     db_employee.is_active = employee.is_active
+    db_employee.is_existing_employee = employee.is_existing_employee
 
     db.commit()
     db.refresh(db_employee)
