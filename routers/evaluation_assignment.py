@@ -496,13 +496,15 @@ def get_assignment_by_token(
     # Prevent Reusing Completed Links
     # -----------------------------------------------
 
-    allow_completed_hr_link = (
+    allow_completed_stage_link = (
+        assignment.workflow_type == "employee_evaluation" and
+        link.stage in {"employee", "supervisor", "hr"}
+    ) or (
         link.stage == "hr" and
         is_legacy_goal_kpi_assignment(assignment)
     )
 
-    if link.completed_at is not None and not allow_completed_hr_link:
-
+    if link.completed_at is not None and not allow_completed_stage_link:
         raise HTTPException(
             status_code=403,
             detail="This evaluation has already been submitted."
