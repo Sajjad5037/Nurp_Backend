@@ -16,6 +16,7 @@ from services.evaluation_cycle_service import get_current_evaluation_cycle
 from services.finalized_target_service import extract_finalized_targets
 from services.evaluation_activity_log_service import log_evaluation_activity
 import uuid
+import traceback
 from models.evaluation_assignment_link import EvaluationAssignmentLink
 
 
@@ -1126,134 +1127,227 @@ def submit_evaluation(
         )
     elif assignment.current_stage == "hr":
 
-        assignment.hr_responses = submission.responses
+        try:
+            print("==============================================")
+            print("LEGACY GOAL/KPI HR SUBMISSION DIAGNOSTICS")
+            print("ABOUT TO ASSIGN HR RESPONSES")
+            print("assignment.id:", assignment.id)
+            print("submission.responses:", submission.responses)
+            print("type(submission.responses):", type(submission.responses))
 
-        if assignment.workflow_type == "goal_kpi_setting":
+            assignment.hr_responses = submission.responses
 
-            log_evaluation_activity(
-                db=db,
-                assignment_id=assignment.id,
-                employee_id=assignment.employee_id,
-                actor_id=assignment.hr_id,
-                actor_role="hr",
-                workflow_type=assignment.workflow_type,
-                stage="hr",
-                action="submitted",
-                details={
-                    "status": "completed"
-                }
+            print("HR RESPONSES ASSIGNED")
+            print("assignment.hr_responses:", assignment.hr_responses)
+
+            if assignment.workflow_type == "goal_kpi_setting":
+
+                log_evaluation_activity(
+                    db=db,
+                    assignment_id=assignment.id,
+                    employee_id=assignment.employee_id,
+                    actor_id=assignment.hr_id,
+                    actor_role="hr",
+                    workflow_type=assignment.workflow_type,
+                    stage="hr",
+                    action="submitted",
+                    details={
+                        "status": "completed"
+                    }
+                )
+
+            assignment.hr_completed_at = datetime.now(
+                timezone.utc
             )
 
-        assignment.hr_completed_at = datetime.now(
-            timezone.utc
-        )
+            print("ABOUT TO SET ASSIGNMENT COMPLETED")
+            print("assignment.current_stage:", assignment.current_stage)
+            print("assignment.status:", assignment.status)
 
-        assignment.current_stage = "completed"
+            assignment.current_stage = "completed"
 
-        assignment.status = "completed"
+            assignment.status = "completed"
 
-        hr_link = (
-            db.query(EvaluationAssignmentLink)
-            .filter(
-                EvaluationAssignmentLink.assignment_id == assignment.id,
-                EvaluationAssignmentLink.stage == "hr"
+            print("ASSIGNMENT COMPLETED VALUES SET")
+            print("assignment.current_stage:", assignment.current_stage)
+            print("assignment.status:", assignment.status)
+
+            hr_link = (
+                db.query(EvaluationAssignmentLink)
+                .filter(
+                    EvaluationAssignmentLink.assignment_id == assignment.id,
+                    EvaluationAssignmentLink.stage == "hr"
+                )
+                .first()
             )
-            .first()
-        )
 
-        if hr_link:
+            if hr_link:
 
-            hr_link.completed_at = datetime.now(timezone.utc)
+                hr_link.completed_at = datetime.now(timezone.utc)
 
-        if assignment.workflow_type == "goal_kpi_setting":
-            employee = (
+            if assignment.workflow_type == "goal_kpi_setting":
+                employee = (
+                    db.query(Employee)
+                    .filter(Employee.id == assignment.employee_id)
+                    .first()
+                )
+
+                if employee:
+                    employee.is_existing_employee = True
+
+            print("ABOUT TO COMMIT LEGACY HR SUBMISSION")
+            print("assignment.id:", assignment.id)
+            print("assignment.current_stage:", assignment.current_stage)
+            print("assignment.status:", assignment.status)
+            print("assignment.hr_responses:", assignment.hr_responses)
+            print("assignment.hr_id:", assignment.hr_id)
+            print("assignment.employee_id:", assignment.employee_id)
+            print("assignment.supervisor_id:", assignment.supervisor_id)
+
+            db.commit()
+
+            print("LEGACY HR SUBMISSION COMMIT COMPLETED")
+            print("assignment.id:", assignment.id)
+            print("assignment.current_stage:", assignment.current_stage)
+            print("assignment.status:", assignment.status)
+            print("assignment.hr_responses:", assignment.hr_responses)
+
+            db.refresh(assignment)
+
+            print("ABOUT TO EXTRACT FINALIZED TARGETS")
+            finalized_targets = extract_finalized_targets(db, assignment.id)
+            print("FINALIZED TARGET EXTRACTION COMPLETED")
+            print("finalized goals:", finalized_targets.get("goals"))
+            print("finalized KPIs:", finalized_targets.get("kpis"))
+
+            # ------------------------------------------
+            # Auto-launch the Employee Evaluation for the
+            # same employee/supervisor/HR/template now that
+            # the legacy Goal & KPI Setting is complete.
+            # Any failure here (e.g. no current evaluation
+            # cycle) is raised as an HTTPException instead of
+            # being swallowed, so the caller is not told the
+            # submission succeeded when the follow-up
+            # evaluation could not be created. The Goal & KPI
+            # assignment itself remains committed as completed.
+            # ------------------------------------------
+
+            print("LOADING FOLLOW-UP EMPLOYEE EVALUATION REQUIREMENTS")
+
+            completed_employee = (
                 db.query(Employee)
                 .filter(Employee.id == assignment.employee_id)
                 .first()
             )
-
-            if employee:
-                employee.is_existing_employee = True
-
-        db.commit()
-
-        db.refresh(assignment)
-
-        extract_finalized_targets(db, assignment.id)
-
-        # ------------------------------------------
-        # Auto-launch the Employee Evaluation for the
-        # same employee/supervisor/HR/template now that
-        # the legacy Goal & KPI Setting is complete.
-        # Any failure here (e.g. no current evaluation
-        # cycle) is raised as an HTTPException instead of
-        # being swallowed, so the caller is not told the
-        # submission succeeded when the follow-up
-        # evaluation could not be created. The Goal & KPI
-        # assignment itself remains committed as completed.
-        # ------------------------------------------
-
-        completed_employee = (
-            db.query(Employee)
-            .filter(Employee.id == assignment.employee_id)
-            .first()
-        )
-
-        completed_supervisor = (
-            db.query(Employee)
-            .filter(Employee.id == assignment.supervisor_id)
-            .first()
-        )
-
-        completed_hr = (
-            db.query(Employee)
-            .filter(Employee.id == assignment.hr_id)
-            .first()
-        )
-
-        employee_evaluation_template = (
-            db.query(EvaluationTemplate)
-            .filter(
-                EvaluationTemplate.workflow_type == "employee_evaluation",
-                EvaluationTemplate.status != "inactive",
+            print(
+                "completed_employee:",
+                "FOUND" if completed_employee else "NOT FOUND",
+                "id:", completed_employee.id if completed_employee else None
             )
-            .order_by(EvaluationTemplate.created_at.desc())
-            .first()
-        )
 
-        if not (
-            completed_employee and
-            completed_supervisor and
-            completed_hr
-        ):
-            raise HTTPException(
-                status_code=500,
-                detail=(
-                    "Goal & KPI Setting was completed, but the "
-                    "follow-up Employee Evaluation could not be "
-                    "created because required records were missing."
+            completed_supervisor = (
+                db.query(Employee)
+                .filter(Employee.id == assignment.supervisor_id)
+                .first()
+            )
+            print(
+                "completed_supervisor:",
+                "FOUND" if completed_supervisor else "NOT FOUND",
+                "id:", completed_supervisor.id if completed_supervisor else None
+            )
+
+            completed_hr = (
+                db.query(Employee)
+                .filter(Employee.id == assignment.hr_id)
+                .first()
+            )
+            print(
+                "completed_hr:",
+                "FOUND" if completed_hr else "NOT FOUND",
+                "id:", completed_hr.id if completed_hr else None
+            )
+
+            employee_evaluation_template = (
+                db.query(EvaluationTemplate)
+                .filter(
+                    EvaluationTemplate.workflow_type == "employee_evaluation",
+                    EvaluationTemplate.status != "inactive",
                 )
+                .order_by(EvaluationTemplate.created_at.desc())
+                .first()
+            )
+            print(
+                "employee_evaluation_template:",
+                "FOUND" if employee_evaluation_template else "NOT FOUND"
+            )
+            print(
+                "employee_evaluation_template.id:",
+                employee_evaluation_template.id
+                if employee_evaluation_template else None
+            )
+            print(
+                "employee_evaluation_template.workflow_type:",
+                employee_evaluation_template.workflow_type
+                if employee_evaluation_template else None
+            )
+            print(
+                "employee_evaluation_template.status:",
+                employee_evaluation_template.status
+                if employee_evaluation_template else None
             )
 
-        if not employee_evaluation_template:
-            raise HTTPException(
-                status_code=500,
-                detail=(
-                    "Goal & KPI Setting was completed, but no active "
-                    "Employee Evaluation template is available to "
-                    "create the follow-up evaluation."
+            if not (
+                completed_employee and
+                completed_supervisor and
+                completed_hr
+            ):
+                raise HTTPException(
+                    status_code=500,
+                    detail=(
+                        "Goal & KPI Setting was completed, but the "
+                        "follow-up Employee Evaluation could not be "
+                        "created because required records were missing."
+                    )
                 )
+
+            if not employee_evaluation_template:
+                raise HTTPException(
+                    status_code=500,
+                    detail=(
+                        "Goal & KPI Setting was completed, but no active "
+                        "Employee Evaluation template is available to "
+                        "create the follow-up evaluation."
+                    )
+                )
+
+            print("ABOUT TO CREATE FOLLOW-UP EMPLOYEE EVALUATION")
+            print("employee.id:", completed_employee.id)
+            print("supervisor.id:", completed_supervisor.id)
+            print("hr.id:", completed_hr.id)
+            print("template.id:", employee_evaluation_template.id)
+            print("requested_workflow_type:", "employee_evaluation")
+
+            follow_up_assignment = _create_evaluation_assignment(
+                db=db,
+                employee=completed_employee,
+                supervisor=completed_supervisor,
+                hr=completed_hr,
+                template=employee_evaluation_template,
+                requested_workflow_type="employee_evaluation",
+                evaluation_cycle_id=None
             )
 
-        _create_evaluation_assignment(
-            db=db,
-            employee=completed_employee,
-            supervisor=completed_supervisor,
-            hr=completed_hr,
-            template=employee_evaluation_template,
-            requested_workflow_type="employee_evaluation",
-            evaluation_cycle_id=None
-        )
+            print("FOLLOW-UP EMPLOYEE EVALUATION CREATED")
+            print("follow_up_assignment.id:", follow_up_assignment.id)
+            print("==============================================")
+
+        except Exception as error:
+            print("LEGACY GOAL/KPI HR SUBMISSION FAILED")
+            print("exception type:", type(error).__name__)
+            print("exception message:", str(error))
+            print("full traceback:")
+            traceback.print_exc()
+            raise
     else:
 
         raise HTTPException(
