@@ -1,5 +1,6 @@
 from calendar import month_name
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
+from services.pdf_renderer import generate_master_sheet_pdf
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy import func
 
@@ -182,7 +183,33 @@ def get_latest_master_sheet_by_employee(
         "updated_at": assignment.updated_at
 
     }
+@router.get("/{assignment_id}/pdf")
+def download_master_sheet_pdf(
+    assignment_id: int,
+    db: Session = Depends(get_db)
+):
+    master_sheet = get_master_sheet(
+        assignment_id=assignment_id,
+        db=db
+    )
 
+    pdf_bytes = generate_master_sheet_pdf(
+        master_sheet
+    )
+
+    filename = (
+        f"evaluation-master-sheet-{assignment_id}.pdf"
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{filename}"'
+            )
+        }
+    )
 
 @router.get("/{assignment_id}")
 def get_master_sheet(

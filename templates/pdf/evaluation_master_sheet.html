@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            color: #111827;
+            margin: 0;
+        }
+
+        .title {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 16px;
+        }
+
+        .employee-info {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .employee-info td {
+            border: 1px solid #CBD5E1;
+            padding: 10px 12px;
+            vertical-align: top;
+        }
+
+        .employee-info .label {
+            display: block;
+            font-size: 9px;
+            font-weight: 700;
+            color: #64748B;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .employee-info .value {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .section-heading {
+            font-size: 17px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .company-information-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 14px;
+        }
+
+        .company-information-card {
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            padding: 16px;
+            min-height: 210px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .company-information-card-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin: 0 0 12px;
+        }
+
+        .company-information-card-text {
+            font-size: 11px;
+            line-height: 1.65;
+            margin: 0;
+        }
+
+        .company-information-list {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        .company-information-list li {
+            font-size: 11px;
+            line-height: 1.55;
+            margin-bottom: 7px;
+        }
+
+        .rating-guide-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .rating-guide-item {
+            font-size: 11px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .rating-guide-rating {
+            font-weight: 700;
+        }
+
+        .quarterly-goals {
+            margin-top: 20px;
+        }
+
+        .quarterly-goals-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 10px;
+        }
+
+        .quarterly-goal {
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            overflow: hidden;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .quarterly-goal-header {
+            padding: 8px 10px;
+            background: #F8FAFC;
+            border-bottom: 1px solid #CBD5E1;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .quarterly-goal-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .quarterly-goal-table th,
+        .quarterly-goal-table td {
+            border: 1px solid #CBD5E1;
+            padding: 8px;
+            vertical-align: middle;
+        }
+
+        .quarterly-goal-table th {
+            background: #F8FAFC;
+            font-size: 9px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .quarterly-goal-table td {
+            font-size: 10px;
+            min-height: 38px;
+        }
+
+        .quarterly-goal-table .goal-description {
+            text-align: left;
+            width: 34%;
+        }
+
+        .quarterly-goal-table .month-cell {
+            text-align: center;
+            width: 14%;
+        }
+
+        .quarterly-goal-table .completion-cell {
+            text-align: center;
+            width: 16%;
+        }
+
+        .quarterly-goal-values {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .quarterly-goal-value-card {
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            padding: 10px;
+            min-height: 55px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .quarterly-goal-value-label {
+            font-size: 8px;
+            color: #64748B;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .quarterly-goal-value {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .quarterly-kpis {
+            margin-top: 20px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .quarterly-kpis-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 10px;
+        }
+
+        .quarterly-kpi-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .quarterly-kpi-table th,
+        .quarterly-kpi-table td {
+            border: 1px solid #CBD5E1;
+            padding: 8px;
+            vertical-align: middle;
+        }
+
+        .quarterly-kpi-table th {
+            background: #F8FAFC;
+            font-size: 9px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .quarterly-kpi-table td {
+            font-size: 10px;
+        }
+
+        .quarterly-kpi-table .kpi-title-cell {
+            width: 16%;
+            text-align: left;
+        }
+
+        .quarterly-kpi-table .kpi-expectation-cell {
+            width: 20%;
+            text-align: left;
+        }
+
+        .quarterly-kpi-table .kpi-month-cell {
+            width: 9%;
+            text-align: center;
+        }
+
+        .quarterly-kpi-table .kpi-average-cell {
+            width: 11%;
+            text-align: center;
+        }
+
+        .quarterly-kpi-table .kpi-comments-cell {
+            width: 26%;
+            text-align: left;
+        }
+
+        .kpi-evaluation-title {
+            font-size: 12px;
+            font-weight: 700;
+            margin: 16px 0 10px;
+        }
+
+        .kpi-evaluation-values {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .kpi-evaluation-card {
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            padding: 10px;
+            min-height: 55px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .kpi-evaluation-label {
+            font-size: 8px;
+            color: #64748B;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .kpi-evaluation-value {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .q4-kpi-section {
+            margin-top: 20px;
+        }
+
+        .q4-kpi-section + .q4-kpi-section {
+            margin-top: 16px;
+        }
+
+        .q4-kpi-table thead {
+            display: table-header-group;
+        }
+
+        .q4-kpi-table tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .q4-final-kpis {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .extra-projects {
+            margin-top: 20px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .extra-projects-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 4px;
+        }
+
+        .extra-projects-subtitle {
+            font-size: 10px;
+            color: #64748B;
+            margin: 0 0 10px;
+        }
+
+        .extra-projects-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .extra-projects-table th,
+        .extra-projects-table td {
+            border: 1px solid #CBD5E1;
+            padding: 8px;
+            vertical-align: middle;
+        }
+
+        .extra-projects-table th {
+            background: #F8FAFC;
+            font-size: 9px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .extra-projects-table td {
+            font-size: 10px;
+        }
+
+        .extra-projects-table .project-description {
+            width: 60%;
+            text-align: left;
+        }
+
+        .extra-projects-table .project-date {
+            width: 20%;
+            text-align: center;
+        }
+        .discussion-notes-feedback {
+            margin-top: 20px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .discussion-notes-feedback-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 4px;
+        }
+
+        .discussion-notes-feedback-subtitle {
+            font-size: 10px;
+            color: #64748B;
+            margin: 0 0 10px;
+        }
+
+        .discussion-notes-feedback-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .discussion-notes-feedback-table th,
+        .discussion-notes-feedback-table td {
+            border: 1px solid #CBD5E1;
+            padding: 8px;
+            vertical-align: middle;
+        }
+
+        .discussion-notes-feedback-table th {
+            background: #F8FAFC;
+            font-size: 9px;
+            font-weight: 700;
+            text-align: left;
+        }
+
+        .discussion-notes-feedback-table td {
+            font-size: 10px;
+        }
+
+        .discussion-notes-feedback-table .response-label {
+            width: 14%;
+            font-weight: 700;
+        }
+
+        .discussion-notes-feedback-table .response-content {
+            width: 86%;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .q4-feedback-proposed-goals {
+            margin-top: 20px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .q4-feedback-proposed-goals-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 14px;
+        }
+
+        .q4-feedback-question {
+            margin-bottom: 14px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .q4-feedback-question-text {
+            font-size: 10px;
+            color: #64748B;
+            margin: 0 0 6px;
+        }
+
+        .q4-feedback-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .q4-feedback-table th,
+        .q4-feedback-table td {
+            border: 1px solid #CBD5E1;
+            padding: 8px;
+            vertical-align: middle;
+        }
+
+        .q4-feedback-table th {
+            width: 14%;
+            background: #F8FAFC;
+            font-size: 9px;
+            font-weight: 700;
+            text-align: left;
+        }
+
+        .q4-feedback-table td {
+            width: 86%;
+            font-size: 10px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .q3-goals-planning {
+            margin-top: 20px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .q3-goals-planning-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 10px;
+        }
+
+        .q3-goal {
+            margin-bottom: 14px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .q3-goal-title {
+            background: #F8FAFC;
+            border: 1px solid #CBD5E1;
+            padding: 8px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .q3-goal-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .q3-goal-table th,
+        .q3-goal-table td {
+            border: 1px solid #CBD5E1;
+            padding: 8px;
+            vertical-align: middle;
+        }
+
+        .q3-goal-table th {
+            width: 14%;
+            background: #F8FAFC;
+            font-size: 9px;
+            font-weight: 700;
+            text-align: left;
+        }
+
+        .q3-goal-table td {
+            width: 86%;
+            font-size: 10px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .performance-core-values {
+            margin-top: 20px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .performance-core-values-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .performance-core-values-card {
+            border: 1px solid #CBD5E1;
+            border-radius: 8px;
+            padding: 8px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .performance-core-values-label {
+            font-size: 9px;
+            font-weight: 700;
+            margin: 0 0 6px;
+        }
+
+        .performance-core-values-value {
+            font-size: 10px;
+            line-height: 1.5;
+            background: #F8FAFC;
+            border: 1px solid #CBD5E1;
+            border-radius: 8px;
+            padding: 8px;
+            min-height: 18px;
+            white-space: pre-wrap;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <div class="title">
+        Evaluation Master Sheet
+    </div>
+
+    <table class="employee-info">
+        <tr>
+            <td>
+                <span class="label">Employee</span>
+                <span class="value">
+                    {{ employee_name or "--" }}
+                </span>
+            </td>
+
+            <td>
+                <span class="label">Email</span>
+                <span class="value">
+                    {{ employee_email or "--" }}
+                </span>
+            </td>
+
+            <td>
+                <span class="label">Designation</span>
+                <span class="value">
+                    {{ designation or "--" }}
+                </span>
+            </td>
+
+            <td>
+                <span class="label">Department</span>
+                <span class="value">
+                    {{ department or "--" }}
+                </span>
+            </td>
+        </tr>
+
+        <tr>
+            <td>
+                <span class="label">Supervisor</span>
+                <span class="value">
+                    {{ supervisor_name or "--" }}
+                </span>
+            </td>
+
+            <td>
+                <span class="label">Supervisor Email</span>
+                <span class="value">
+                    {{ supervisor_email or "--" }}
+                </span>
+            </td>
+
+            <td>
+                <span class="label">Review Cycle</span>
+                <span class="value">
+                    {{ review_cycle or "--" }}
+                </span>
+            </td>
+
+            <td>
+                <span class="label">Status</span>
+                <span class="value">
+                    {{ status or "--" }}
+                </span>
+            </td>
+        </tr>
+    </table>
+
+    
+
+    {% if company_show_mission or company_show_core_values or company_rating_guide %}
+        <div class="company-information-grid">
+
+            {% if company_show_mission %}
+                <div class="company-information-card">
+                    <div class="company-information-card-title">
+                        Mission Statement
+                    </div>
+
+                    <p class="company-information-card-text">
+                        {{ company_mission or "--" }}
+                    </p>
+                </div>
+            {% endif %}
+
+            {% if company_show_core_values %}
+                <div class="company-information-card">
+                    <div class="company-information-card-title">
+                        Core Values
+                    </div>
+
+                    <ul class="company-information-list">
+                        {% for core_value in company_core_values %}
+                            <li>
+                                <strong>{{ core_value.name }}</strong>
+                                {% if core_value.description %}
+                                    — {{ core_value.description }}
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            {% if company_rating_guide %}
+                <div class="company-information-card">
+                    <div class="company-information-card-title">
+                        Self-Rating Guide
+                    </div>
+
+                    <div class="rating-guide-list">
+                        {% for item in company_rating_guide %}
+                            <div class="rating-guide-item">
+                                <span class="rating-guide-rating">
+                                    {{ item.rating }}
+                                </span>
+                                {% if item.description %}
+                                    — {{ item.description }}
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+        </div>
+    {% endif %}
+
+    {% if quarterly_goals %}
+        <div class="quarterly-goals">
+
+            <div class="quarterly-goals-title">
+                Quarterly Goals
+            </div>
+
+            {% for goal in quarterly_goals %}
+
+                <div class="quarterly-goal">
+
+                    <div class="quarterly-goal-header">
+                        Goal #{{ loop.index }}
+                    </div>
+
+                    <table class="quarterly-goal-table">
+                        <thead>
+                            <tr>
+                                <th class="goal-description">
+                                    Goals
+                                </th>
+
+                                {% for month in quarterly_goal_months %}
+                                    <th class="month-cell">
+                                        {{ month }}
+                                    </th>
+                                {% endfor %}
+
+                                <th class="completion-cell">
+                                    Completion Date
+                                </th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <tr>
+                                <td class="goal-description">
+                                    {{ goal.description or "--" }}
+                                </td>
+
+                                {% for month in quarterly_goal_months %}
+                                    <td class="month-cell">
+                                        {{ goal.monthly_progress.get(month, "--") or "--" }}
+                                    </td>
+                                {% endfor %}
+
+                                <td class="completion-cell">
+                                    {{ goal.completion_date or "--" }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+
+                <div class="quarterly-goal-values">
+
+                    <div class="quarterly-goal-value-card">
+                        <div class="quarterly-goal-value-label">
+                            Employee Selection
+                        </div>
+                        <div class="quarterly-goal-value">
+                            {{ goal.employee_rating or "--" }}
+                        </div>
+                    </div>
+
+                    <div class="quarterly-goal-value-card">
+                        <div class="quarterly-goal-value-label">
+                            Supervisor Selection
+                        </div>
+                        <div class="quarterly-goal-value">
+                            {{ goal.supervisor_rating or "--" }}
+                        </div>
+                    </div>
+
+                    <div class="quarterly-goal-value-card">
+                        <div class="quarterly-goal-value-label">
+                            Final Agreed Rating (Meeting Decision)
+                        </div>
+                        <div class="quarterly-goal-value">
+                            {{ goal.final_rating or "--" }}
+                        </div>
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+    {% endif %}
+
+    {% if quarterly_kpis %}
+        <div class="quarterly-kpis">
+
+            <div class="quarterly-kpis-title">
+                KPI Results for Q3
+            </div>
+
+            <table class="quarterly-kpi-table">
+                <thead>
+                    <tr>
+                        <th class="kpi-title-cell">KPI Title</th>
+                        <th class="kpi-expectation-cell">Expectation</th>
+                        <th class="kpi-month-cell">July</th>
+                        <th class="kpi-month-cell">August</th>
+                        <th class="kpi-month-cell">September</th>
+                        <th class="kpi-average-cell">Q3 Average</th>
+                        <th class="kpi-comments-cell">Comments &amp; Notes</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for kpi in quarterly_kpis %}
+                        <tr>
+                            <td class="kpi-title-cell">
+                                {{ kpi.title or "--" }}
+                            </td>
+                            <td class="kpi-expectation-cell">
+                                {{ kpi.expectation or "--" }}
+                            </td>
+                            <td class="kpi-month-cell">
+                                {{ kpi.july if kpi.july is not none and kpi.july != "" else "--" }}
+                            </td>
+                            <td class="kpi-month-cell">
+                                {{ kpi.august if kpi.august is not none and kpi.august != "" else "--" }}
+                            </td>
+                            <td class="kpi-month-cell">
+                                {{ kpi.september if kpi.september is not none and kpi.september != "" else "--" }}
+                            </td>
+                            <td class="kpi-average-cell">
+                                {{ kpi.q3_average if kpi.q3_average is not none and kpi.q3_average != "" else "--" }}
+                            </td>
+                            <td class="kpi-comments-cell">
+                                {{ kpi.comments or "--" }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="kpi-evaluation-title">
+                OVERALL KPI RESULTS EVALUATION
+            </div>
+
+            <div class="kpi-evaluation-values">
+                <div class="kpi-evaluation-card">
+                    <div class="kpi-evaluation-label">
+                        Employee Selection
+                    </div>
+                    <div class="kpi-evaluation-value">
+                        {{ kpi_employee_rating or "--" }}
+                    </div>
+                </div>
+
+                <div class="kpi-evaluation-card">
+                    <div class="kpi-evaluation-label">
+                        Supervisor Selection
+                    </div>
+                    <div class="kpi-evaluation-value">
+                        {{ kpi_supervisor_rating or "--" }}
+                    </div>
+                </div>
+
+                <div class="kpi-evaluation-card">
+                    <div class="kpi-evaluation-label">
+                        Final Agreed Rating
+                    </div>
+                    <div class="kpi-evaluation-value">
+                        {{ kpi_final_rating or "--" }}
+                    </div>
+                </div>
+
+                <div class="kpi-evaluation-card">
+                    <div class="kpi-evaluation-label">
+                        KPI Section Points
+                    </div>
+                    <div class="kpi-evaluation-value">
+                        {{ kpi_section_points if kpi_section_points is not none and kpi_section_points != "" else "--" }}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    {% endif %}
+
+    {% if extra_projects %}
+        <div class="extra-projects">
+
+            <div class="extra-projects-title">
+                3. Extra Projects or Assignments Accomplished Aside From Quarterly Goals
+            </div>
+
+            <div class="extra-projects-subtitle">
+                Additional impactful projects or assignments completed during the quarter.
+            </div>
+
+            <table class="extra-projects-table">
+                <thead>
+                    <tr>
+                        <th class="project-description">
+                            Project or Assignment
+                        </th>
+                        <th class="project-date">
+                            Start date
+                        </th>
+                        <th class="project-date">
+                            End date
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for project in extra_projects %}
+                        <tr>
+                            <td class="project-description">
+                                {{ project.description or "-" }}
+                            </td>
+                            <td class="project-date">
+                                {{ project.start_date or "-" }}
+                            </td>
+                            <td class="project-date">
+                                {{ project.end_date or "-" }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+    {% endif %}
+
+    {% if employee_discussion_response or supervisor_discussion_response %}
+        <div class="discussion-notes-feedback">
+
+            <div class="discussion-notes-feedback-title">
+                Discussion Notes &amp; Feedback
+            </div>
+
+            <div class="discussion-notes-feedback-subtitle">
+                Any and all other information the employee would like to relay about Q2 or go over in this meeting.
+            </div>
+
+            <table class="discussion-notes-feedback-table">
+                <tbody>
+                    <tr>
+                        <th class="response-label">
+                            Employee response
+                        </th>
+                        <td class="response-content">
+                            {{ employee_discussion_response or "-" }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th class="response-label">
+                            Supervisor response
+                        </th>
+                        <td class="response-content">
+                            {{ supervisor_discussion_response or "-" }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+    {% endif %}
+
+    {% if q4_feedback_question1_employee or q4_feedback_question1_supervisor or q4_feedback_question2_employee or q4_feedback_question2_supervisor %}
+        <div class="q4-feedback-proposed-goals">
+
+            <div class="q4-feedback-proposed-goals-title">
+                Q4 Feedback &amp; Proposed Goals
+            </div>
+
+            <div class="q4-feedback-question">
+                <div class="q4-feedback-question-text">
+                    What you improve on moving forward in Q4?
+                </div>
+
+                <table class="q4-feedback-table">
+                    <tbody>
+                        <tr>
+                            <th>Employee response</th>
+                            <td>{{ q4_feedback_question1_employee or "-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Supervisor response</th>
+                            <td>{{ q4_feedback_question1_supervisor or "-" }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="q4-feedback-question">
+                <div class="q4-feedback-question-text">
+                    What support or assistance do you need from your supervisor?
+                </div>
+
+                <table class="q4-feedback-table">
+                    <tbody>
+                        <tr>
+                            <th>Employee response</th>
+                            <td>{{ q4_feedback_question2_employee or "-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Supervisor response</th>
+                            <td>{{ q4_feedback_question2_supervisor or "-" }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    {% endif %}
+
+    {% if q3_goals_planning %}
+        <div class="q3-goals-planning">
+
+            <div class="q3-goals-planning-title">
+                Q3 Goals Planning
+            </div>
+
+            {% for goal in q3_goals_planning %}
+                <div class="q3-goal">
+
+                    <div class="q3-goal-title">
+                        Goal {{ goal.goal_number }} for Q3:
+                    </div>
+
+                    <table class="q3-goal-table">
+                        <tbody>
+                            <tr>
+                                <th>Employee response</th>
+                                <td>{{ goal.employee_response or "-" }}</td>
+                            </tr>
+
+                            <tr>
+                                <th>Supervisor response</th>
+                                <td>{{ goal.supervisor_response or "-" }}</td>
+                            </tr>
+
+                            <tr>
+                                <th>Final Set Goal</th>
+                                <td>{{ goal.final_goal or "-" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+            {% endfor %}
+
+        </div>
+    {% endif %}
+
+    {% if professional_attributes_response or core_values_response %}
+        <div class="performance-core-values">
+
+            <div class="performance-core-values-grid">
+
+                <div class="performance-core-values-card">
+                    <div class="performance-core-values-label">
+                        Professional Attributes to Work On *
+                    </div>
+                    <div class="performance-core-values-value">
+                        {{ professional_attributes_response or "-" }}
+                    </div>
+                </div>
+
+                <div class="performance-core-values-card">
+                    <div class="performance-core-values-label">
+                        Core Values to Work On *
+                    </div>
+                    <div class="performance-core-values-value">
+                        {{ core_values_response or "-" }}
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    {% endif %}
+
+    <div class="q4-kpi-section">
+        <div class="quarterly-kpis-title">
+            Q4 KPI Review &amp; Planning
+        </div>
+
+        <table class="quarterly-kpi-table q4-kpi-table">
+            <thead>
+                <tr>
+                    <th>Current KPI Title</th>
+                    <th>Current Expectation</th>
+                    <th>Employee KPI Suggestion</th>
+                    <th>Suggested Expectation</th>
+                    <th>Supervisor KPI Suggestion</th>
+                    <th>Suggested Expectation</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for kpi in q4_kpi_planning %}
+                    <tr>
+                        <td>{{ kpi.current_title or "-" }}</td>
+                        <td>{{ kpi.current_expectation or "-" }}</td>
+                        <td>{{ kpi.employee_suggestion or "-" }}</td>
+                        <td>{{ kpi.employee_expectation or "-" }}</td>
+                        <td>{{ kpi.supervisor_suggestion or "-" }}</td>
+                        <td>{{ kpi.supervisor_expectation or "-" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="q4-kpi-section q4-final-kpis">
+        <div class="quarterly-kpis-title">
+            Final Agreed Q4 Targets &amp; Expectations
+        </div>
+
+        <table class="quarterly-kpi-table q4-kpi-table">
+            <thead>
+                <tr>
+                    <th>Final Agreed KPI</th>
+                    <th>Agreed Expectation</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for kpi in q4_final_kpis %}
+                    <tr>
+                        <td>{{ kpi.title or "-" }}</td>
+                        <td>{{ kpi.expectation or "-" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
