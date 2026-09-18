@@ -278,11 +278,21 @@ def _create_evaluation_assignment(
 
         employee_email=employee.email,
 
-        access_token=str(employee_link.access_token)
+        access_token=str(employee_link.access_token),
+
+        workflow_type=workflow_type,
+
+        evaluation_cycle_year=(
+            evaluation_cycle.year if evaluation_cycle else None
+        ),
+
+        evaluation_cycle_quarter=(
+            evaluation_cycle.quarter if evaluation_cycle else None
+        )
 
     )
 
-    if workflow_type == "employee_evaluation":
+    if workflow_type in ("employee_evaluation", "goal_kpi_setting"):
 
         send_supervisor_evaluation_email(
 
@@ -292,9 +302,21 @@ def _create_evaluation_assignment(
 
             employee_name=employee.full_name,
 
-            access_token=str(supervisor_link.access_token)
+            access_token=str(supervisor_link.access_token),
+
+            workflow_type=workflow_type,
+
+            evaluation_cycle_year=(
+                evaluation_cycle.year if evaluation_cycle else None
+            ),
+
+            evaluation_cycle_quarter=(
+                evaluation_cycle.quarter if evaluation_cycle else None
+            )
 
         )
+
+    if workflow_type == "employee_evaluation":
 
         send_hr_evaluation_email(
 
