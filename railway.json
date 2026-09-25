@@ -1,6 +1,6 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "buildCommand": "PLAYWRIGHT_BROWSERS_PATH=0 python -m playwright install chromium"
+    "buildCommand": "PLAYWRIGHT_BROWSERS_PATH=0 python -m playwright install --with-deps chromium"
   }
 }
