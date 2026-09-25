@@ -326,7 +326,13 @@ def _create_evaluation_assignment(
 
             employee_name=employee.full_name,
 
-            access_token=str(hr_link.access_token)
+            supervisor_name=supervisor.full_name,
+
+            access_token=str(hr_link.access_token),
+
+            quarter_year=(
+                f"Q{evaluation_cycle.quarter} {evaluation_cycle.year}"
+            )
 
         )
 
@@ -1127,6 +1133,27 @@ def submit_evaluation(
             .first()
         )
 
+        supervisor = (
+            db.query(Employee)
+            .filter(Employee.id == assignment.supervisor_id)
+            .first()
+        )
+
+        evaluation_cycle = (
+            db.query(EvaluationCycle)
+            .filter(EvaluationCycle.id == assignment.evaluation_cycle_id)
+            .first()
+        )
+
+        if not supervisor or not evaluation_cycle:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Unable to send the HR evaluation email because "
+                    "the supervisor or evaluation cycle was not found."
+                )
+            )
+
         hr_link = (
             db.query(EvaluationAssignmentLink)
             .filter(
@@ -1137,15 +1164,14 @@ def submit_evaluation(
         )
 
         send_hr_evaluation_email(
-
             hr_name=hr.full_name,
-
             hr_email=hr.email,
-
             employee_name=employee.full_name,
-
-            access_token=str(hr_link.access_token)
-
+            supervisor_name=supervisor.full_name,
+            access_token=str(hr_link.access_token),
+            quarter_year=(
+                f"Q{evaluation_cycle.quarter} {evaluation_cycle.year}"
+            )
         )
     elif assignment.current_stage == "hr":
 
