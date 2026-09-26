@@ -137,7 +137,7 @@ def send_employee_evaluation_email(
                 Please click the button below to begin.
             </p>
 
-            <p>
+            <p style="margin: 24px 0;">
 
                 <a
                     href="{evaluation_link}"
@@ -360,7 +360,7 @@ def send_supervisor_evaluation_email(
                 platform and submit your entries.
             </p>
 
-            <p>
+            <p style="margin: 24px 0;">
 
                 <a
                     href="{evaluation_link}"

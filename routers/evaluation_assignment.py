@@ -1046,18 +1046,6 @@ def submit_evaluation(
             .first()
         )
 
-        send_supervisor_evaluation_email(
-
-            supervisor_name=supervisor.full_name,
-
-            supervisor_email=supervisor.email,
-
-            employee_name=employee.full_name,
-
-            access_token=str(supervisor_link.access_token)
-
-        )
-
     # ------------------------------------------
     # Supervisor Submission
     # ------------------------------------------
