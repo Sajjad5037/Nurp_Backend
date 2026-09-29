@@ -140,10 +140,6 @@ def send_employee_evaluation_email(
                 <a href="https://atlas.nurp.com/goal-kpi-filling-tutorial">
                     Watch the Goal &amp; KPI Form Guide
                 </a>
-                <br>
-                <a href="https://atlas.nurp.com/goal-kpi-filling-tutorial">
-                    https://atlas.nurp.com/goal-kpi-filling-tutorial
-                </a>
             </p>
 
             <p>
