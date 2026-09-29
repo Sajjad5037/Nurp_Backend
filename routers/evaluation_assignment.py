@@ -332,7 +332,9 @@ def _create_evaluation_assignment(
 
             quarter_year=(
                 f"Q{evaluation_cycle.quarter} {evaluation_cycle.year}"
-            )
+            ),
+
+            workflow_type=workflow_type
 
         )
 
@@ -1159,7 +1161,9 @@ def submit_evaluation(
             access_token=str(hr_link.access_token),
             quarter_year=(
                 f"Q{evaluation_cycle.quarter} {evaluation_cycle.year}"
-            )
+            ),
+
+            workflow_type=assignment.workflow_type
         )
     elif assignment.current_stage == "hr":
 
