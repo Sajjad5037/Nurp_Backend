@@ -594,10 +594,14 @@ def get_assignment_by_token(
                 f"({cycle.start_date.strftime('%b')} "
                 f"– {cycle.end_date.strftime('%b')})"
             )
+            start_month = cycle.start_date.month
+            if cycle.start_date.day > 1:
+                start_month += 1
+
             review_cycle_months = [
                 month_name[month]
                 for month in range(
-                    cycle.start_date.month,
+                    start_month,
                     cycle.end_date.month + 1,
                 )
             ]
